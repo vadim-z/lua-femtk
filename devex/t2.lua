@@ -2,6 +2,7 @@ local NC = require('netCDF')
 
 local def = {
    fmt = 1,
+   -- stream = true, -- HIGHLY EXPRERIMENTAL
    dims = {
       time_step = 0,
       num_nodes = 9,
@@ -49,12 +50,12 @@ local def = {
 }
 
 local NCf = NC.NCFile()
-NCf:create('zzz.nc', def)
-NCf:write_var('kkk', {41})
-NCf:write_var('kkk', 43)
-NCf:write_var('tx', {'_@'})
-NCf:write_var('tx', 'zxcvb')
-NCf:write_var('tx_3', {'A', 'C', 'Q', array = true })
-NCf:write_var('ids', {1,2,3,4,5,6,7,8,9})
-NCf:write_var('idsx', {-1,-2,-3,-4,-5,-6,-7,-8,-9})
+NCf:create('zzz2.nc', def)
+NCf:write_vars({
+      kkk = 43,
+      tx = 'zxcvb',
+      tx_3 = {'A', 'C', 'Q', array = true },
+      ids = {1,2,3,4,5,6,7,8,9},
+      idsx = {-1,-2,-3,-4,-5,-6,-7,-8,-9},
+})
 NCf:close()

@@ -55,34 +55,36 @@ do
    -- create dim_list object
    -- FIXME FIXME: dimlist must be unordered table
    local function create_dim_list(self, dimlist)
-      -- make cross reference, check for record dimension
+      dimlist = dimlist or {}
+      -- make cross reference
       local ncdims = { xref = {} }
-      local ndims = #dimlist
+      local kdim = 0
       local fixed = true -- are all dimensions fixed?
-      for k = 1, ndims do
-         local dim = dimlist[k]
-         assert(dim.name and dim.size and dim.size >= 0, 'Invalid dimension ' .. k)
-         local rec = dim.size == 0
+
+      for dim_name, dim_size in pairs(dimlist) do
+         assert(dim_size >= 0, 'Invalid dimension ' .. dim_name)
+         local rec = dim_size == 0
          assert(fixed or not rec,
                 'More than one record dimension is not supported in classic NetCDF')
          fixed = fixed and not rec
+
+         kdim = kdim + 1
          if rec then
-            ncdims.rec_dim = k
+            ncdims.rec_dim = kdim
          end
-         ncdims[k] = dim
-         ncdims.xref[dim.name] = k
+         ncdims[kdim] = { name = dim_name, size = dim_size }
+         ncdims.xref[dim_name] = kdim
       end
 
       -- binary representation
       local bintbl = {}
-      if ndims == 0 then
+      if kdim == 0 then
          -- dimensions are absent
          bintbl[1] = ABSENT
       else
          -- tag
-         tinsert(bintbl, spack('> i4 i4', NC.DIMENSION, ndims))
-         for k = 1, ndims do
-            local dim = dimlist[k]
+         tinsert(bintbl, spack('> i4 i4', NC.DIMENSION, kdim))
+         for _, dim in ipairs(ncdims) do
             -- write each dimension
             tinsert(bintbl, spack('>!4 s4 i4', dim.name, dim.size))
          end
@@ -173,10 +175,11 @@ do
          local val_size = spacksize(var.val_fmt)
 
          -- ========= Process dimensions ============
-         var.rank = #var_v.dims
+         local dims = var_v.dims or {}
+         var.rank = #dims
          local vsize = val_size
          local n_items = 1
-         for kdim, dim_name in ipairs(var_v.dims) do
+         for kdim, dim_name in ipairs(dims) do
             -- include size of dim  id
             vars_def_len = vars_def_len + szi4
             local dimid = self.dim_list.xref[dim_name]

@@ -1,7 +1,8 @@
 local NC = require('netCDF')
 
 local def = {
-   fmt = 1,
+   fmt = 2,
+   hdr_size_min = 1024,
    -- stream = true, -- HIGHLY EXPRERIMENTAL
    dims = {
       time_step = 0,
@@ -46,6 +47,10 @@ local def = {
          type = NC.NC.CHAR,
          dims = { 'three' },
       },
+      ts1 = {
+         type = NC.NC.CHAR,
+         dims = { 'time_step', 'three' },
+      },
    },
 }
 
@@ -60,8 +65,10 @@ NCf:write_fixed_vars({
 })
 NCf:write_record({
       ts3 = {11,12,13,14,15,16,17,18,19},
+      ts1 = 'foo',
 })
 NCf:write_record({
       ts3 = {111,112,113,114,115,116,117,118,119},
+      ts1 = 'bar',
 })
 NCf:close()

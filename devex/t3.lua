@@ -2,7 +2,6 @@ local NC = require('netCDF')
 
 local def = {
    fmt = 1,
-   -- stream = true, -- HIGHLY EXPRERIMENTAL
    dims = {
       time_step = 0,
       num_nodes = 9,
@@ -46,22 +45,22 @@ local def = {
          type = NC.NC.CHAR,
          dims = { 'three' },
       },
+      ts1 = {
+         type = NC.NC.CHAR,
+         dims = { 'time_step', 'three' },
+      },
    },
 }
 
 local NCf = NC.NCFile()
-NCf:create('zzz2.nc', def)
-NCf:write_fixed_vars({
-      kkk = 43,
-      tx = 'zxcvb',
-      tx_3 = {'A', 'C', 'Q', array = true },
-      ids = {1,2,3,4,5,6,7,8,9},
-      idsx = {-1,-2,-3,-4,-5,-6,-7,-8,-9},
-})
-NCf:write_record({
-      ts3 = {11,12,13,14,15,16,17,18,19},
-})
-NCf:write_record({
-      ts3 = {111,112,113,114,115,116,117,118,119},
-})
+NCf:create('zzz.nc', def)
+NCf:write_var('kkk', {41})
+NCf:write_var('kkk', 43)
+NCf:write_var('tx', {'_@'})
+NCf:write_var('tx', 'zxcvb')
+NCf:write_var('tx_3', {'A', 'C', 'Q', array = true })
+NCf:write_var('ids', {1,2,3,4,5,6,7,8,9})
+NCf:write_var('idsx', {-1,-2,-3,-4,-5,-6,-7,-8,-9})
+NCf:write_var('ts3', {11,12,13,14,15,16,17,18,19}, 2)
+NCf:write_var('ts1', 'jkl', 1)
 NCf:close()

@@ -217,7 +217,7 @@ do
          -- Alignment; padding
          local real_vsize = vsize
          -- vsize is always rounded up to the multiple of 4
-         var.vsize = vsize + pad4len(vsize)
+         vsize = vsize + pad4len(vsize)
          if var.rec then
             -- record
             n_rec_vars = n_rec_vars + 1
@@ -228,6 +228,7 @@ do
             -- fixed var
             fixed_size = fixed_size + vsize
          end
+         var.vsize = vsize
 
          -- ========= Process attributes ============
          var.vatt_list = new_att_list(var_v.atts)
@@ -241,8 +242,8 @@ do
 
       end -- loop over variables
 
-      -- pad records?
-      self.pad_recs = n_rec_vars == 1
+      -- pack records?
+      self.pack_recs = n_rec_vars == 1
 
       if n_rec_vars == 1 then
          -- pack record variables
@@ -270,6 +271,8 @@ do
       end
 
       -- offset points after all fixed variables
+      assert(offs == self.hdr_size + self.fixed_size,
+             'Internal error: fixed variables length mismatch')
 
       -- iterate over record variables
       for _, var in ipairs(self.var_list) do
@@ -337,6 +340,9 @@ do
          self.numrecs = 0
       end
       local numrecs_bin = spack('>i4', self.numrecs)
+
+      -- reset
+      self.numrecs = 0
 
       -- process dimensions, attributes, variables
       create_dim_list(self, ncdef.dims)
@@ -438,12 +444,17 @@ do
       self.f_offs = self.f_offs + #bin + #padstr
    end
 
-   -- write fixed var by id
-   local function write_var_by_id(self, varid, data)
+   -- write fixed/record var by id
+   local function write_var_by_id(self, varid, data, nrec)
       local var = self.var_list[varid]
-      assert(not var.rec,
-             'Only fixed vars are written with write_var_...')
       local offs = var.begin
+      if var.rec then
+         assert(nrec,
+                'Number of record missing when writing record variable')
+         -- add required number of records
+         offs = offs + (nrec-1)*self.rec_size
+      end
+
       if self.stream then
          -- streaming mode, no seek
          assert(self.f_offs == offs,
@@ -454,36 +465,60 @@ do
          self.f_offs = offs
       end
       -- pad fixed vars
-      write_data(self, var, data, true)
+      local pad = not (var.rec and self.pack_recs)
+      write_data(self, var, data, pad)
    end
 
-   -- public method: write a fixed variable to netCDF file
-   function NCFileClass:write_var(name, data)
+   -- update numrecs
+   local function write_numrecs(self, numrecs_new)
+      if not self.stream and self.numrecs ~= numrecs_new then
+         -- do nothing in streaming mode
+         -- or if the number of records haven't changed
+         local offs = self.f:seek('set', OFFSET_NUMRECS)
+         self.f:write(spack('>i4', numrecs_new))
+         -- return to prev offset
+         self.f:seek('set', offs)
+      end
+      -- update field, just in case
+      self.numrecs = numrecs_new
+   end
+
+   -- public method: write a fixed or variable to netCDF file
+   -- update number of records if required
+   -- nrec may be missing in case of fixed variable
+   function NCFileClass:write_var(name, data, nrec)
       local varid = self.var_list.xref[name]
-      assert(varid, 'Unknown variable')
-      write_var_by_id(self, varid, data)
+      assert(varid, 'Unknown variable ' .. name)
+      write_var_by_id(self, varid, data, nrec)
+      if self.var_list[varid].rec then
+         local numrecs_new = math.max(self.numrecs, nrec)
+         write_numrecs(self, numrecs_new)
+      end
    end
 
    -- public method: write every fixed variable to netCDF file
-   function NCFileClass:write_vars(vars_data)
+   function NCFileClass:write_fixed_vars(vars_data)
       for varid, var in ipairs(self.var_list) do
          if not var.rec then
             local data = vars_data[var.name]
-            assert(data, 'Variable missing')
+            assert(data, 'Missing variable ' .. var.name)
             write_var_by_id(self, varid, data)
          end
       end
    end
 
-   -- update numrecs
-   local function write_numrecs(self)
-      if not self.stream then
-         -- do nothing in streaming mode
-         local offs = self.f:seek('set', OFFSET_NUMRECS)
-         self.f:write(spack('>i4', self.numrecs))
-         -- return to prev offset
-         self.f:seek('set', offs)
+   -- public method: write every record variable to netCDF file
+   -- nrec may be missing in case of the next record
+   function NCFileClass:write_record(vars_data, nrec)
+      nrec = nrec or self.numrecs + 1
+      for varid, var in ipairs(self.var_list) do
+         if var.rec then
+            local data = vars_data[var.name]
+            assert(data, 'Missing variable ' .. var.name)
+            write_var_by_id(self, varid, data, nrec)
+         end
       end
+      write_numrecs(self, nrec)
    end
 
 end

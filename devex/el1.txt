@@ -1,0 +1,107 @@
+netcdf el1 {
+dimensions:
+	len_string = 33 ;
+	len_line = 81 ;
+	four = 4 ;
+	time_step = UNLIMITED ;
+	num_dim = 3 ;
+	num_nodes = 4 ;
+	num_elem = 1 ;
+	num_el_blk = 1 ;
+	num_el_in_blk1 = 1 ;
+	num_nod_per_el1 = 4 ;
+	num_nod_var = 9 ;
+	num_elem_var = 9 ;
+variables:
+	float time_whole(time_step) ;
+	int eb_status(num_el_blk) ;
+	int eb_prop1(num_el_blk) ;
+		eb_prop1:name = "ID" ;
+	float coord(num_dim, num_nodes) ;
+	char coor_names(num_dim, len_string) ;
+	int connect1(num_el_in_blk1, num_nod_per_el1) ;
+		connect1:elem_type = "TETRA" ;
+	float vals_nod_var(time_step, num_nod_var, num_nodes) ;
+	char name_nod_var(num_nod_var, len_string) ;
+	char name_elem_var(num_elem_var, len_string) ;
+	float vals_elem_var1eb1(time_step, num_el_in_blk1) ;
+	float vals_elem_var2eb1(time_step, num_el_in_blk1) ;
+	float vals_elem_var3eb1(time_step, num_el_in_blk1) ;
+	float vals_elem_var4eb1(time_step, num_el_in_blk1) ;
+	float vals_elem_var5eb1(time_step, num_el_in_blk1) ;
+	float vals_elem_var6eb1(time_step, num_el_in_blk1) ;
+	float vals_elem_var7eb1(time_step, num_el_in_blk1) ;
+	float vals_elem_var8eb1(time_step, num_el_in_blk1) ;
+	float vals_elem_var9eb1(time_step, num_el_in_blk1) ;
+
+//global attributes:
+		:api\ version = 2.01f ;
+		:version = 2.01f ;
+		:floating\ point\ word\ size = 4 ;
+		:title = " one element tensor test" ;
+
+data:
+
+ time_whole = 0. ;
+
+ eb_status = 1 ;
+
+ eb_prop1 = 1 ;
+
+ coord = 0., 1., 0., 0., 
+0., 0., 1., 0.,   
+0., 0., 0., 1.;
+
+ coor_names =
+  "X",
+  "Y",
+  "Z" ;
+
+ connect1 =
+  1, 2, 3, 4 ;
+
+ vals_nod_var =
+  11., 12., 13., 14.,
+  21., 22., 23., 24.,
+  31., 32., 33., 34.,
+  41., 42., 43., 44.,
+  51., 52., 53., 54.,
+  61., 62., 63., 64.,
+  71., 72., 73., 74.,
+  81., 82., 83., 84.,
+  91., 92., 93., 94.;
+
+ name_nod_var =
+  "UX",
+  "UY",
+  "UZ",
+  "VXX",
+  "VYY",
+  "VZZ",
+  "VXY",
+  "VXZ",
+  "VYZ" ;
+
+ name_elem_var =
+  "EUX",
+  "EUY",
+  "EUZ",
+  "EVXX",
+  "EVYY",
+  "EVZZ",
+  "EVXY",
+  "EVXZ",
+  "EVYZ" ;
+
+ vals_elem_var1eb1 = 111.;
+ vals_elem_var2eb1 = 121.;
+ vals_elem_var3eb1 = 131.;
+ vals_elem_var4eb1 = 141.;
+ vals_elem_var5eb1 = 151.;
+ vals_elem_var6eb1 = 161.;
+ vals_elem_var7eb1 = 171.;
+ vals_elem_var8eb1 = 181.;
+ vals_elem_var9eb1 = 191.;
+ 
+}
+

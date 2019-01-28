@@ -1,0 +1,23 @@
+netcdf test1 {
+dimensions:
+	time_step = UNLIMITED ;
+	num_nodes = 9 ;
+variables:
+byte kkk;
+        byte ids(num_nodes) ; 
+//        byte ts(time_step);
+//byte ts2(time_step);
+        byte id2(num_nodes);
+byte ts3(time_step,num_nodes);
+
+data:
+kkk = 55;
+ids = 1,2,3,4,5,6,7,8,9;
+id2 = 11,12,13,14,15,16,17,18,19;
+//ts =  101, 102, 103, 104, 105;
+//ts2 = 91, 92, 93, 94, 95;
+ts3 = 21,22,23,24,25,26,27,28,29,
+31,32,33,34,35,36,37,38,39,
+41,42,43,44,45,46,47,48,49;
+}
+

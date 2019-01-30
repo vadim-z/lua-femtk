@@ -154,7 +154,7 @@ do
       local n_rec_vars = 0 -- do we need to pack records? count record vars
       local packed_rec_size = 0
 
-      for var_name, var_v in pairs(varlist) do
+      local function process_var(var_name, var_v)
          local var = {
             name = var_name,
             dimids = {},
@@ -240,7 +240,19 @@ do
          ncvars[kvar] = var
          ncvars.xref[var_name] = kvar
 
-      end -- loop over variables
+      end
+
+      -- iterate over variables and ordered blocks of variables
+      for var_name, var_v in pairs(varlist) do
+         if var_v.ordered then
+            -- iterate over block content
+            for _, vb_item in ipairs(var_v) do
+               process_var(vb_item.name, vb_item)
+            end
+         else
+            process_var(var_name, var_v)
+         end
+      end
 
       -- pack records?
       self.pack_recs = n_rec_vars == 1

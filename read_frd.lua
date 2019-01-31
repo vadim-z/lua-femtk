@@ -22,8 +22,12 @@ local function deblank(s)
    return s:gsub('%s*$', '')
 end
 
-local function read_node_block(f, fmt, sz_blk)
+local function read_node_block(f, fmt, sz_blk, ncomps)
    local blk = {}
+   -- allocate components array
+   for k = 1, ncomps do
+      blk[k] = {}
+   end
    local recfmt1, recfmt2, codefmt
    codefmt = rdr('*1 I2')
    -- read nodal data block
@@ -34,7 +38,7 @@ local function read_node_block(f, fmt, sz_blk)
       recfmt1 = rdr('*1 I2 I10' .. string.rep('E12', 6))
       recfmt2 = rdr('*1 I2 *10' .. string.rep('E12', 6))
    elseif fmt == 2 then
-     error('Unsupported fmt')
+      error('Unsupported fmt')
    else
       error('Unknown fmt')
    end
@@ -55,9 +59,8 @@ local function read_node_block(f, fmt, sz_blk)
          local A = { recfmt1(l) }
          node = ck(A[2], 'node number')
          ndata = #A - 2
-         blk[node] = blk[node] or {}
          for k = 1, ndata do
-            blk[node][k] = ck(A[2+k], 'value')
+            blk[k][node] = ck(A[2+k], 'value')
          end
          nread = nread + 1
       elseif code == -2 then
@@ -66,7 +69,7 @@ local function read_node_block(f, fmt, sz_blk)
          -- expecting ndata and node to be defined
          local cont = #A - 1
          for k = 1, cont do
-            blk[node][ndata+k] = ck(A[1+k], 'value')
+            blk[ndata+k][node] = ck(A[1+k], 'value')
          end
          ndata = ndata + cont
       elseif code ~= -3 then
@@ -95,7 +98,7 @@ local function read_el_block(f, fmt, sz_blk)
       recfmt1 = rdr('*1 I2 I10 I5 I5 I5')
       recfmt2 = rdr('*1 I2' .. string.rep('I10', 10))
    elseif fmt == 2 then
-     error('Unsupported fmt')
+      error('Unsupported fmt')
    else
       error('Unknown fmt')
    end
@@ -172,6 +175,7 @@ local function read_var_block(f)
    end
 
    -- Read components
+   local ncomps_provided = 0
    for k = 1, ncomps do
       l = f:read()
       if not l then
@@ -192,10 +196,16 @@ local function read_var_block(f)
          -- make cross-references
          blk[k] = cblk
          blk[cblk.name] = cblk
+
+         -- count provided components
+         if cblk.exist ~= 1 then
+            ncomps_provided = ncomps_provided + 1
+         end
       else
          error(string.format('Unexpected record code %d in block', code))
       end
-   end
+   end -- loop over components
+   blk.ncomps = ncomps_provided
 
    return blk
 end
@@ -235,7 +245,7 @@ local function read_frd(fname)
          if frd.nodes then
             error('Multiple 2C node blocks are not supported')
          else
-            frd.nodes = read_node_block(f, fmt, nnodes)
+            frd.nodes = read_node_block(f, fmt, nnodes, 3)
          end
       elseif key == 3 and code == 'C' then
          -- 3C record, element definitions
@@ -262,7 +272,7 @@ local function read_frd(fname)
          ck(fmt, 'format')
 
          -- read data
-         local blk = read_node_block(f, fmt, nnodes)
+         local blk = read_node_block(f, fmt, nnodes, var.ncomps)
 
          -- add variable definition
          blk.var = var

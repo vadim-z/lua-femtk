@@ -13,17 +13,15 @@ local function rPrint(s, l, i) -- recursive Print (structure, limit, indent)
 	return l
 end
 
--- local uni = R.read_frd('unisphere_ES.frd')
+local uni = R.read_frd('xtra/unisphere_ES.frd')
 -- rPrint(uni, 1000000)
-
--- local cnt = R.read_frd('contact10.frd.ref')
+local cnt = R.read_frd('xtra/contact10.frd.ref')
 -- rPrint(cnt, 1000000)
-
--- gap = R.read_frd('gap2.frd.ref')
+local gap = R.read_frd('xtra/gap2.frd.ref')
 -- rPrint(gap, 1000000)
--- seg = R.read_frd('segment.frd.ref')
+local seg = R.read_frd('xtra/segment.frd.ref')
 --rPrint(seg, 1000000)
 -- uni0 = R.read_frd('unisphere.frd')
 --rPrint(uni0, 1000000)
-unit = R.read_frd('devex/unitest.frd')
+local unit = R.read_frd('devex/unitest.frd')
 rPrint(unit, 1000000)

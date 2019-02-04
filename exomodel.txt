@@ -1,0 +1,46 @@
+”резанна€ модель данных EXODUS II дл€ Lua-модул€
+
+–азмерности:
+num_nodes
+num_dim <- можно подавать на вход, но в FRD сейчас 3
++{define_els} num_elem
++{define_els} num_el_blk <- в модель подаютс€ элементы, уже разбитые на блоки?????
++{define_els} num_el_in_blk#
++{define_els} num_nod_per_el# <- автоматически
+X num_att_in_blk# <- автоматически; если вообще атрибуты есть
+num_info
+num_glo_var
+num_nod_var
+num_elem_var ??? нужно ли???
+time_step
+len_string <- default 33
+len_line <- default 81
+four <- 4
+
+√лобальные атрибуты:
+title
+version <- def 2.02
+api_version  <- def 2.02
+floating_point_word_size <- 8
+file_size <- 1
+
+ѕеременные:
+coord[xyz]
+coor_names <- {X,Y,Z}
+++{define_els} connect# <- NB: следить за пор€дком при конверсии <атрибут: elem_type>
+++{define_els} elem_map карта!!!
+X attrib# <- если нужно; аттрибуты приклеены к описанию элементов
+++{define_els} eb_status <- нужно ли? на вс€кий случай бы сделать
+++{define_els} eb_prop(#P) <- значение свойства <атрибут: name> -- id
+info_records
+time_whole@
+elem_var_tab ??? надо ли? будут ли поэлементные переменные?
+name_glo_var
+vals_glo_var
+name_nod_var
+vals_nod_var#@
+vals_elem_var(#V)eb(#B)@
+
+—емантика модул€:
+1. «адание топологии. 
+1.1. –азбиение на блоки.

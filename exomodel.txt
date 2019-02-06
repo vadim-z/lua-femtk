@@ -1,8 +1,8 @@
 Урезанная модель данных EXODUS II для Lua-модуля
 
 Размерности:
-num_nodes
-num_dim <- можно подавать на вход, но в FRD сейчас 3
++ num_nodes
++ num_dim <- можно подавать на вход, но в FRD сейчас 3
 +{define_els} num_elem
 +{define_els} num_el_blk <- в модель подаются элементы, уже разбитые на блоки?????
 +{define_els} num_el_in_blk#
@@ -12,21 +12,21 @@ num_info
 num_glo_var
 num_nod_var
 num_elem_var ??? нужно ли???
-time_step
-len_string <- default 33
-len_line <- default 81
-four <- 4
++ time_step
++ len_string <- default 33
++ len_line <- default 81
++ four <- 4
 
 Глобальные атрибуты:
 title
-version <- def 2.02
-api_version  <- def 2.02
-floating_point_word_size <- 8
-file_size <- 1
++ version <- def 2.02
++ api_version  <- def 2.02
++ floating_point_word_size <- 8
++ file_size <- 1
 
 Переменные:
-coord[xyz]
-coor_names <- {X,Y,Z}
+++ coord[xyz]
+++ coor_names <- {X,Y,Z}
 ++{define_els} connect# <- NB: следить за порядком при конверсии <атрибут: elem_type>
 ++{define_els} elem_map карта!!!
 X attrib# <- если нужно; аттрибуты приклеены к описанию элементов

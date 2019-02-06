@@ -3,6 +3,45 @@ local netCDF = require('netCDF')
 
 local Exo2Class = {}
 
+-- initialize general EXODUS II entities
+local function define_gen(self)
+   self.dims = {}
+   self.dims.time_step = 0
+   self.dims.four = 4
+   self.dims.len_string = 33
+   self.dims.len_line = 81
+   self.atts = {}
+   self.atts.version = { 2.02, type = netCDF.NC.FLOAT }
+   self.atts.api_version = { 2.02, type = netCDF.NC.FLOAT }
+   self.atts.floating_point_word_size = { 8, type = netCDF.NC.INT }
+   self.atts.file_size = { 1, type = netCDF.NC.INT }
+   --.......
+end
+
+-- define nodes and related variables
+local function define_nodes(self, nodes)
+   local ndim = #nodes
+   if ndim > 0 then
+      self.dims.num_dim = ndim
+      self.dims.num_nodes = #nodes[1]
+      local co = { 'x', 'y', 'z' }
+      self.vars.coor_names = {
+         type = netCDF.NC.CHAR,
+         dims = { 'num_dim', 'len_string' }
+      }
+      self.vals_fixed.coor_names = {}
+      for kd, dname in ipairs(co) do
+         local coname = 'coord' .. dname
+         self.vars[coname] = {
+            type = self.numtype,
+            dims = { 'num_nodes' }
+         }
+         self.vals_fixed[coname] = nodes[kd]
+         self.vals_fixed.coor_names[kd] = dname:upper()
+      end
+   end
+end
+
 -- define element blocks and related variables
 local function define_els(self, els)
    -- table of connect ... variables definition
@@ -18,9 +57,9 @@ local function define_els(self, els)
    local ids = {}
 
    for k, el in ipairs(els) do
-      local id = els.id
+      local id = el.id
       blocks[id] = blocks[id] or {}
-      local bkey = string:format('%s%d', els.type, #els)
+      local bkey = string:format('%s%d', el.type, #el)
       -- try to find block by its id and type
       local bl_num = blocks[id][bkey]
       local block, el_map
@@ -55,7 +94,7 @@ local function define_els(self, els)
       -- register external number
       table.insert(el_map, k)
       -- add connectivity
-      for _, node in ipairs(els) do
+      for _, node in ipairs(el) do
          table.insert(block, node)
       end
 

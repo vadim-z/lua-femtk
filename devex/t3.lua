@@ -7,6 +7,7 @@ local def = {
       num_nodes = 9,
       len = 20,
       three = 3,
+      xdim = 2,
    },
    atts = {
       atr1 = {2, type = NC.NC.SHORT},
@@ -49,6 +50,10 @@ local def = {
          type = NC.NC.CHAR,
          dims = { 'time_step', 'three' },
       },
+      tx4 = {
+         type = NC.NC.CHAR,
+         dims = { 'xdim', 'num_nodes' },
+      },
    },
 }
 
@@ -59,8 +64,11 @@ NCf:write_var('kkk', 43)
 NCf:write_var('tx', {'_@'})
 NCf:write_var('tx', 'zxcvb')
 NCf:write_var('tx_3', {'A', 'C', 'Q', array = true })
+NCf:write_var('tx_3', {'ABCD'})
 NCf:write_var('ids', {1,2,3,4,5,6,7,8,9})
 NCf:write_var('idsx', {-1,-2,-3,-4,-5,-6,-7,-8,-9})
 NCf:write_var('ts3', {11,12,13,14,15,16,17,18,19}, 2)
-NCf:write_var('ts1', 'jkl', 1)
+NCf:write_var('ts1', {'jkl'}, 1)
+NCf:write_var('ts1', 'X', 2)
+NCf:write_var('tx4', { '1234567890abcdefghijkl', 'Q' } )
 NCf:close()

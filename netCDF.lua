@@ -397,7 +397,14 @@ do
 
    -- private functions
    -- add string zero-padded up to length
-   local function add_string(t, s, len)
+   local function add_string(t, s, len, zterm)
+      -- truncate a string if required
+      if zterm then
+         -- force zero-termination, decrease max length by 1
+         s = s:sub(1, len-1)
+      else
+         s = s:sub(1, len)
+      end
       tinsert(t, s)
       tinsert(t, ('\0'):rep(len - #s))
    end
@@ -423,8 +430,17 @@ do
             -- write string as 'scalar':
             -- rank-1 fixed variable or rank-2 record
             -- length is the size of the last dimension
+
+            -- force null-termination in string arrays,
+            -- according to section 6.29 of
+            -- The NetCDF Fortran 77 Interface Guide:
+            -- Variable-length strings should follow the C convention
+            -- of writing strings with a terminating zero byte so that
+            -- the intended length of the string can be determined when
+            -- it is later read by either C or FORTRAN programs.
+            local zterm = var.rec
             add_string(bintbl, data,
-                       self.dim_list[var.dimids[rank]].size)
+                       self.dim_list[var.dimids[rank]].size, zterm)
          else
             error('Table expected')
          end
@@ -434,8 +450,12 @@ do
             assert(#data == var.n_items_s, 'Incorrect data length')
             -- size of the last dimension
             local len = self.dim_list[var.dimids[rank]].size
+            -- force null-termination in string arrays, see above
+            -- string arrays are record variables or
+            -- fixed variables with more than one string item
+            local zterm = var.rec or #data > 1
             for _, d in ipairs(data) do
-               add_string(bintbl, d, len)
+               add_string(bintbl, d, len, zterm)
             end
          else
             -- flat array of scalars

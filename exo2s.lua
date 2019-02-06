@@ -5,6 +5,8 @@ local Exo2Class = {}
 
 -- initialize general EXODUS II entities
 local function define_gen(self)
+   self.numtype = netCDF.NC.DOUBLE
+
    self.dims = {}
    self.dims.time_step = 0
    self.dims.four = 4
@@ -14,12 +16,21 @@ local function define_gen(self)
    self.atts.version = { 2.02, type = netCDF.NC.FLOAT }
    self.atts.api_version = { 2.02, type = netCDF.NC.FLOAT }
    self.atts.floating_point_word_size = { 8, type = netCDF.NC.INT }
+   -- Large model file
    self.atts.file_size = { 1, type = netCDF.NC.INT }
-   --.......
+   self.vars = {}
+   self.vars.time_whole = {
+      type = self.numtype,
+      dims = { 'time_step' }
+   }
+end
+
+function Exo2Class.add_metadata(self, key, val)
 end
 
 -- define nodes and related variables
-local function define_nodes(self, nodes)
+function Exo2Class.define_nodes(self, nodes)
+   assert(not self.NCfile, 'Unexpected nodes definition')
    local ndim = #nodes
    if ndim > 0 then
       self.dims.num_dim = ndim
@@ -43,7 +54,8 @@ local function define_nodes(self, nodes)
 end
 
 -- define element blocks and related variables
-local function define_els(self, els)
+function Exo2Class.define_els(self, els)
+   assert(not self.NCfile, 'Unexpected elements definition')
    -- table of connect ... variables definition
    local conn_def = {}
    -- table of connect... variables content

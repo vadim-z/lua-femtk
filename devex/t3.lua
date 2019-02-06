@@ -1,7 +1,7 @@
 local NC = require('netCDF')
 
 local def = {
-   fmt = 1,
+-- fmt = 1,
    dims = {
       time_step = 0,
       num_nodes = 9,

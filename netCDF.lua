@@ -331,17 +331,18 @@ do
    -- create header; set important flags
    local function create_hdr(self, ncdef)
       local sgn
+      local fmt = ncdef.fmt or 1
       -- choose format
-      if ncdef.fmt == 1 then
+      if fmt == 1 then
          self.offset_size = 4
          self.offset_fmt = '> i4'
          sgn = 'CDF\1'
-      elseif ncdef.fmt == 2 then
+      elseif fmt == 2 then
          self.offset_size = 8
          self.offset_fmt = '> i8'
          sgn = 'CDF\2'
       else
-         error('Unsupported netCDF format ' .. ncdef.fmt)
+         error('Unsupported netCDF format ' .. fmt)
       end
 
       -- initialize number of records

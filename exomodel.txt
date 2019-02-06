@@ -33,7 +33,7 @@ X attrib# <- если нужно; аттрибуты приклеены к описанию элементов
 ++{define_els} eb_status <- нужно ли? на всякий случай бы сделать
 ++{define_els} eb_prop(#P) <- значение свойства <атрибут: name> -- id
 info_records
-time_whole@
++ time_whole@
 elem_var_tab ??? надо ли? будут ли поэлементные переменные?
 name_glo_var
 vals_glo_var

@@ -8,7 +8,7 @@
 +{define_els} num_el_in_blk#
 +{define_els} num_nod_per_el# <- автоматически
 X num_att_in_blk# <- автоматически; если вообще атрибуты есть
-X num_info
++ num_info
 + num_qa_records
 + num_glo_var
 + num_nod_var
@@ -33,7 +33,7 @@ num_elem_var ??? нужно ли???
 X attrib# <- если нужно; аттрибуты приклеены к описанию элементов
 ++{define_els} eb_status <- нужно ли? на всякий случай бы сделать
 ++{define_els} eb_prop(#P) <- значение свойства <атрибут: name> -- id
-X info_records
+++ info_records
 ++ qa_records
 + time_whole@
 elem_var_tab ??? надо ли? будут ли поэлементные переменные?

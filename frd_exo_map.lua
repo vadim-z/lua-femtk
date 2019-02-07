@@ -275,6 +275,10 @@ end
             self.saved_glob_vals = self.plist
             -- save time
             self.saved_time = blk.val
+            -- add attributes related to analysis
+            local info = string.format('Analysis type: %s %d',
+                                       blk.analysis, blk.type)
+            self.f:add_info(info)
          elseif self.nrec == 1 then
             -- commit saved data
             commit_saved(self)

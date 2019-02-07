@@ -60,6 +60,24 @@ function Exo2Class:add_qa(qa)
    table.insert(self.vals_fixed.qa_records, qa.time)
 end
 
+-- add information record
+function Exo2Class:add_info(info)
+   assert(not self.NCfile, 'Unexpected information record definition')
+   local n = self.dims.num_info or 0
+   n = n + 1
+   self.dims.num_info = n
+
+   if n == 1 then
+      -- create info_records variable
+      self.vars.info_records = {
+         type = netCDF.NC.CHAR,
+         dims = { 'num_info', 'len_line' }
+      }
+      self.vals_fixed.info_records = {}
+   end
+   table.insert(self.vals_fixed.info_records, info)
+end
+
 -- define nodes and related variables
 function Exo2Class:define_nodes(nodes)
    assert(not self.NCfile, 'Unexpected nodes definition')

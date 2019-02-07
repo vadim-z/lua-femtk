@@ -423,8 +423,9 @@ do
 
       if type(data) ~= 'table' then
          -- scalar cases
-         if var.rank == 0 then
+         if rank == 0 or var.rec and rank ==1 then
             -- write scalar
+            -- by definition, character rank-1 records go there too
             tinsert(bintbl, spack(fmt, data))
          elseif (rank == 1 or var.rec and rank == 2)
          and var.type == NC.CHAR and type(data) == 'string' then

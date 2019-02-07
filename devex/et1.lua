@@ -31,14 +31,17 @@ f:define_els(
    { [99] = 'steel' }
 )
 
-f:define_glob_var('goo')
-f:define_glob_var('zoo')
+f:define_glob_vars{'goo', 'zoo'}
 f:define_node_var('UX')
 f:define_node_var('UY')
 f:define_node_var('UZ')
 
 EX2.create_exo2_file(f)
 
+f:write_glob_vars(2, { zoo = 2, goo = 3} )
+f:write_glob_vars(1, { goo = 100, zoo = 900 } )
+f:write_time_step(1, 0.5)
+f:write_time_step(2, 0.7)
 f:close()
 
 -- rPrint(f, 100000)

@@ -233,28 +233,30 @@ function Exo2Class:define_els(els, mats)
    self.vals_fixed.eb_status = status
 end
 
--- add global variable
-function Exo2Class:define_glob_var(varname)
-   assert(not self.NCfile, 'Unexpected global variable definition')
-   local n = self.dims.num_glo_var
-   if n then
-      -- add to existing variable
-      self.dims.num_glo_var = n + 1
-   else
-      -- create global variables
-      self.dims.num_glo_var = 1
-      self.vars.name_glo_var = {
-         type = netCDF.NC.CHAR,
-         dims = { 'num_glo_var', 'len_string' }
-      }
-      self.vars.vals_glo_var = {
-         type = self.numtype,
-         dims = { 'time_step', 'num_glo_var' }
-      }
-      self.vals_fixed.name_glo_var = {}
-   end
+-- add global variables
+-- NB: given that
+--     1) current netCDF Lua interface supports writing a variable or a record
+--     blob _as a whole only_
+--     2) EXODUS II model aggregates global variables in one blob
+-- there is no point defining and writing global variables separately
+function Exo2Class:define_glob_vars(varnames)
+   assert(not self.NCfile, 'Unexpected global variables definition')
 
-   table.insert(self.vals_fixed.name_glo_var, varname)
+   -- create global variables
+   self.dims.num_glo_var = #varnames
+   self.vars.name_glo_var = {
+      type = netCDF.NC.CHAR,
+      dims = { 'num_glo_var', 'len_string' }
+   }
+   self.vars.vals_glo_var = {
+      type = self.numtype,
+      dims = { 'time_step', 'num_glo_var' }
+   }
+   self.vals_fixed.name_glo_var = {}
+
+   for k, name in ipairs(varnames) do
+      self.vals_fixed.name_glo_var[k] = name
+   end
 end
 
 -- add nodal variable
@@ -272,8 +274,11 @@ function Exo2Class:define_node_var(varname)
          dims = { 'num_nod_var', 'len_string' }
       }
       self.vals_fixed.name_nod_var = {}
+      self.map_node_var = {}
    end
    table.insert(self.vals_fixed.name_nod_var, varname)
+
+   self.map_node_var[varname] = n
 
    -- create nodal variable
    self.vars[vals_name] = {
@@ -292,6 +297,24 @@ local function create_file(self)
    for name, var in pairs(self.vals_fixed) do
       self.NCfile:write_var(name, var)
    end
+end
+
+function Exo2Class:write_time_step(kstep, val)
+   assert(self.NCfile, 'File not created yet')
+   self.NCfile:write_var('time_whole', val, kstep)
+end
+
+-- writing values of all global variables at once, see the note above
+function Exo2Class:write_glob_vars(kstep, vars)
+   assert(self.NCfile, 'File not created yet')
+
+   local vals = {}
+   for k, name in ipairs(self.vals_fixed.name_glo_var) do
+      vals[k] = assert(vars[name],
+                       'Global variable ' .. name .. ' not found')
+   end
+
+   self.NCfile:write_var('vals_glo_var', vals, kstep)
 end
 
 function Exo2Class:close()

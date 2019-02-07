@@ -54,6 +54,10 @@ local def = {
          type = NC.NC.CHAR,
          dims = { 'xdim', 'num_nodes' },
       },
+      ss = {
+         type = NC.NC.CHAR,
+         dims = { 'time_step' }
+      },
    },
 }
 
@@ -71,4 +75,6 @@ NCf:write_var('ts3', {11,12,13,14,15,16,17,18,19}, 2)
 NCf:write_var('ts1', {'jkl'}, 1)
 NCf:write_var('ts1', 'X', 2)
 NCf:write_var('tx4', { '1234567890abcdefghijkl', 'Q' } )
+NCf:write_var('ss', '$', 1)
+NCf:write_var('ss', {'%'}, 2)
 NCf:close()

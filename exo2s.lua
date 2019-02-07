@@ -25,7 +25,32 @@ local function define_gen(self)
    }
 end
 
-function Exo2Class.add_metadata(self, key, val)
+function Exo2Class.add_title(self, title)
+   assert(not self.NCfile, 'Unexpected title definition')
+   self.atts.title = title
+end
+
+-- add QA records
+function Exo2Class.add_qa(self, qa)
+   assert(not self.NCfile, 'Unexpected QA records definition')
+   local nqa = self.dims.num_qa_rec
+   if nqa then
+      -- add to existing variable
+      self.dims.num_qa_rec = nqa + 1
+   else
+      -- create qa variable
+      self.dims.num_qa_rec = 1
+      self.vars.qa_rec = {
+         type = netCDF.NC.CHAR,
+         dims = { 'num_qa_rec', 'four', 'len_string' }
+      }
+      self.vals_fixed.qa_records = {}
+   end
+
+   table.insert(self.vals_fixed.qa_records, qa.code)
+   table.insert(self.vals_fixed.qa_records, qa.ver)
+   table.insert(self.vals_fixed.qa_records, qa.data)
+   table.insert(self.vals_fixed.qa_records, qa.time)
 end
 
 -- define nodes and related variables
@@ -54,7 +79,7 @@ function Exo2Class.define_nodes(self, nodes)
 end
 
 -- define element blocks and related variables
-function Exo2Class.define_els(self, els)
+function Exo2Class.define_els(self, els, mats)
    assert(not self.NCfile, 'Unexpected elements definition')
    -- table of connect ... variables definition
    local conn_def = {}
@@ -67,6 +92,9 @@ function Exo2Class.define_els(self, els)
    local blk_elem_maps = {}
    -- ids of the blocks
    local ids = {}
+   -- inverse map
+   self.inv_elem_map_blk = {}
+   self.inv_elem_map_loc = {}
 
    for k, el in ipairs(els) do
       local id = el.id
@@ -116,9 +144,12 @@ function Exo2Class.define_els(self, els)
    -- EXODUS one, which must be consecutive and contiguous in the
    -- element blocks
    local elem_map = {}
-   for _, map in ipairs(blk_elem_maps) do
-      for _, k in ipairs(map) do
-         table.insert(elem_map, k)
+   for kblk, map in ipairs(blk_elem_maps) do
+      for kint, kext in ipairs(map) do
+         table.insert(elem_map, kext)
+         -- inverse map entry
+         self.inv_elem_map_blk[kext] = kblk
+         self.inv_elem_map_loc[kext] = kint
       end
    end
 
@@ -165,10 +196,82 @@ function Exo2Class.define_els(self, els)
       atts = { name = 'ID' }
    }
    self.vals_fixed.eb_prop1 = ids
+
+   -- add 'material' properties
+   if mats then
+      local kprop = 1
+      for kmat, mat in pairs(mats) do
+         kprop = kprop + 1 -- skip 1st property ID
+         local name = string.format('eb_prop%d', kprop)
+         self.vars[name] = {
+            type = netCDF.NC.INT,
+            dims = { 'num_el_blk' },
+            atts = { name = mat }
+         }
+
+         -- truth table
+         local ptbl = {}
+         for kbl, id in ipairs(ids) do
+            ptbl[kbl] = (id == kmat) and 1 or 0
+         end
+         self.vals_fixed[name] = ptbl
+      end
+   end
+
    -- eb_status
    self.vars.eb_status = {
       type = netCDF.NC.INT,
       dims = { 'num_el_blk' },
    }
    self.vals_fixed.eb_status = status
+end
+
+-- add global variable
+function Exo2Class.add_glob_var(self, varname)
+   assert(not self.NCfile, 'Unexpected global variable definition')
+   local n = self.dims.num_glo_var
+   if n then
+      -- add to existing variable
+      self.dims.num_glo_var = n + 1
+   else
+      -- create global variables
+      self.dims.num_glo_var = 1
+      self.vars.name_glo_var = {
+         type = netCDF.NC.CHAR,
+         dims = { 'num_glo_var', 'len_string' }
+      }
+      self.vars.vals_glo_var = {
+         type = self.numtype,
+         dims = { 'time_step', 'num_glo_var' }
+      }
+      self.vals_fixed.name_glo_var = {}
+   end
+
+   table.insert(self.vals_fixed.name_glo_var, varname)
+end
+
+-- add nodal variable
+function Exo2Class.add_node_var(self, varname)
+   assert(not self.NCfile, 'Unexpected nodal variable definition')
+   local n = self.dims.num_nod_var or 0
+   n = n + 1
+   self.dims.num_nod_var = n
+   local vals_name = string.format('vals_nod_var%d', n)
+
+   if n == 1 then
+      -- create names of nodal variables
+      self.vars.name_nod_var = {
+         type = netCDF.NC.CHAR,
+         dims = { 'num_nod_var', 'len_string' }
+      }
+      self.vals_fixed.name_nod_var = {}
+   end
+   table.insert(self.vals_fixed.name_nod_var, varname)
+
+   -- create nodal variable
+   self.vars[vals_name] = {
+      type = self.numtype,
+      dims = { 'time_step', 'num_nodes' }
+   }
+
 end

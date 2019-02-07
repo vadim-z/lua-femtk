@@ -8,9 +8,10 @@
 +{define_els} num_el_in_blk#
 +{define_els} num_nod_per_el# <- автоматически
 X num_att_in_blk# <- автоматически; если вообще атрибуты есть
-num_info
-num_glo_var
-num_nod_var
+X num_info
++ num_qa_records
++ num_glo_var
++ num_nod_var
 num_elem_var ??? нужно ли???
 + time_step
 + len_string <- default 33
@@ -18,7 +19,7 @@ num_elem_var ??? нужно ли???
 + four <- 4
 
 √лобальные атрибуты:
-title
++ title
 + version <- def 2.02
 + api_version  <- def 2.02
 + floating_point_word_size <- 8
@@ -32,14 +33,15 @@ title
 X attrib# <- если нужно; аттрибуты приклеены к описанию элементов
 ++{define_els} eb_status <- нужно ли? на вс€кий случай бы сделать
 ++{define_els} eb_prop(#P) <- значение свойства <атрибут: name> -- id
-info_records
+X info_records
+++ qa_records
 + time_whole@
 elem_var_tab ??? надо ли? будут ли поэлементные переменные?
-name_glo_var
-vals_glo_var
-name_nod_var
-vals_nod_var#@
-vals_elem_var(#V)eb(#B)@
+++ name_glo_var
++ vals_glo_var@
+++ name_nod_var
++ vals_nod_var#@
+vals_elem_var(#V)eb(#B)@ ??
 
 —емантика модул€:
 1. «адание топологии. 

@@ -36,8 +36,6 @@ f:define_node_var('UX')
 f:define_node_var('UY')
 f:define_node_var('UZ')
 
-EX2.create_exo2_file(f)
-
 f:write_glob_vars(2, { zoo = 2, goo = 3} )
 f:write_glob_vars(1, { goo = 100, zoo = 900 } )
 f:write_time_step(1, 0.5)

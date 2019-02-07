@@ -41,6 +41,29 @@ local function fixed_reader(fmt)
    end
 end
 
+local function deblank(s)
+   return s:gsub('%s*$', '')
+end
+
+local function check_val(v, msg)
+   if v then
+      return v
+   else
+      error((msg or 'value') .. ' expected')
+   end
+end
+
+local function check_val_nonempty(v, msg)
+   if v and v ~= '' then
+      return v
+   else
+      error((msg or 'identifier') .. ' expected')
+   end
+end
+
 return {
    fixed_reader = fixed_reader,
+   deblank = deblank,
+   check_val = check_val,
+   check_val_nonempty = check_val_nonempty,
 }

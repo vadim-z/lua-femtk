@@ -300,13 +300,17 @@ local function create_file(self)
 end
 
 function Exo2Class:write_time_step(kstep, val)
-   assert(self.NCfile, 'File not created yet')
+   if not self.NCfile then
+      create_file(self)
+   end
    self.NCfile:write_var('time_whole', val, kstep)
 end
 
 -- writing values of all global variables at once, see the note above
 function Exo2Class:write_glob_vars(kstep, vars)
-   assert(self.NCfile, 'File not created yet')
+   if not self.NCfile then
+      create_file(self)
+   end
 
    local vals = {}
    for k, name in ipairs(self.vals_fixed.name_glo_var) do
@@ -319,7 +323,9 @@ end
 
 -- writing values of nodal variable
 function Exo2Class:write_node_var(kstep, varname, vals)
-   assert(self.NCfile, 'File not created yet')
+   if not self.NCfile then
+      create_file(self)
+   end
 
    local k = assert(self.map_node_var[varname],
                     'Node variable ' .. varname .. ' not found')
@@ -330,7 +336,10 @@ function Exo2Class:write_node_var(kstep, varname, vals)
 end
 
 function Exo2Class:close()
-   assert(self.NCfile, 'File not created yet')
+   if not self.NCfile then
+      create_file(self)
+   end
+
    self.NCfile:close()
    self.NCfile = nil
 end
@@ -342,6 +351,4 @@ end
 
 return {
    Exo2File = Exo2File,
-   -- temporary
-   create_exo2_file = create_file,
 }

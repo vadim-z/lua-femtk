@@ -1,26 +1,9 @@
 local R = require('readfix53')
 
 local rdr = R.fixed_reader
-
-local function ck(v, msg)
-   if v then
-      return v
-   else
-      error((msg or 'value') .. ' expected')
-   end
-end
-
-local function ckne(v, msg)
-   if v and v ~= '' then
-      return v
-   else
-      error((msg or 'identifier') .. ' expected')
-   end
-end
-
-local function deblank(s)
-   return s:gsub('%s*$', '')
-end
+local ck = R.check_val
+local ckne = R.check_val_nonempty
+local deblank = R.deblank
 
 local function read_node_block(f, fmt, sz_blk, ncomps)
    local blk = {}

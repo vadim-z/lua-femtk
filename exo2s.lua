@@ -242,20 +242,22 @@ end
 function Exo2Class:define_glob_vars(varnames)
    assert(not self.NCfile, 'Unexpected global variables definition')
 
-   -- create global variables
-   self.dims.num_glo_var = #varnames
-   self.vars.name_glo_var = {
-      type = netCDF.NC.CHAR,
-      dims = { 'num_glo_var', 'len_string' }
-   }
-   self.vars.vals_glo_var = {
-      type = self.numtype,
-      dims = { 'time_step', 'num_glo_var' }
-   }
-   self.vals_fixed.name_glo_var = {}
+   if #varnames > 0 then
+      -- create global variables
+      self.dims.num_glo_var = #varnames
+      self.vars.name_glo_var = {
+         type = netCDF.NC.CHAR,
+         dims = { 'num_glo_var', 'len_string' }
+      }
+      self.vars.vals_glo_var = {
+         type = self.numtype,
+         dims = { 'time_step', 'num_glo_var' }
+      }
+      self.vals_fixed.name_glo_var = {}
 
-   for k, name in ipairs(varnames) do
-      self.vals_fixed.name_glo_var[k] = name
+      for k, name in ipairs(varnames) do
+         self.vals_fixed.name_glo_var[k] = name
+      end
    end
 end
 
@@ -312,13 +314,16 @@ function Exo2Class:write_glob_vars(kstep, vars)
       create_file(self)
    end
 
-   local vals = {}
-   for k, name in ipairs(self.vals_fixed.name_glo_var) do
-      vals[k] = assert(vars[name],
-                       'Global variable ' .. name .. ' not found')
-   end
+   local names = self.vals_fixed.name_glo_var
+   if names then
+      local vals = {}
+      for k, name in ipairs(names) do
+         vals[k] = assert(vars[name],
+                          'Global variable ' .. name .. ' not found')
+      end
 
-   self.NCfile:write_var('vals_glo_var', vals, kstep)
+      self.NCfile:write_var('vals_glo_var', vals, kstep)
+   end
 end
 
 -- writing values of nodal variable

@@ -35,6 +35,12 @@ function Exo2_writer_class:rec1C(_)
    self.mats = {}
    self.nodes = false
    self.elts = false
+   self.glob_vars = {}
+   self.node_vars = {}
+   self.vars_defined = false
+   self.nrec = 1 -- ???????
+   self.saved_node_vals = {}
+   self.saved_glob_vals = {}
 --[[
    self.plist = {}
    self.stepmap = {}
@@ -176,6 +182,24 @@ do
    end
 end
 
+local function commit_vars(self)
+   -- save accumulated data
+   if not self.vars_defined then
+      -- define global and nodal variables
+      self.f:define_glob_vars(self.glob_vars)
+      for _, var in ipairs(self.node_vars) do
+         self.f:define_node_var(var)
+      end
+      self.vars_defined = true
+      -- save accumulated values of node variables
+      for k, var in ipairs(self.node_vars) do
+         self.f:write_node_var(self.nrec, var, self.saved_node_vals[k])
+      end
+   end
+   -- save accumulated values of global variables
+   self.f:write_glob_vars(self.nrec, self.saved_glob_vals)
+end
+
 function Exo2_writer_class:rec1P(rec)
 --   table.insert(self.plist, rec)
 end
@@ -205,6 +229,7 @@ function Exo2_writer_class:rec100C(blk)
 end
 
 function Exo2_writer_class.rec9999(self)
+   commit_vars(self)
    io.stderr:write('FRD file processed.\n')
    self.f:close()
 end

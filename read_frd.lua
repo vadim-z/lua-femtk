@@ -198,7 +198,9 @@ local function read_frd(fname, writer)
 
    local keycodefmt = rdr('*1 I4 A1')
    local recfmt1C = rdr('*1 *4 *1 A6')
-   local recfmt1UP = rdr('*1 *4 *1 A66')
+   -- local recfmt1UP = rdr('*1 *4 *1 A66')
+   -- 1PAX record requires longer string
+   local recfmt1UP = rdr('*1 *4 *1 A90')
    local recfmt23C = rdr('*1 *4 *1 *18 I12 *37 I1')
    local recfmt100C = rdr('*1 *4 *1 A6 E12 I12 A20 I2 I5 A10 I2')
 

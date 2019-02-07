@@ -36,16 +36,13 @@ function Exo2_writer_class:rec1C(_)
    self.nodes = false
    self.elts = false
    self.glob_vars = {}
-   self.node_vars = {}
-   self.vars_defined = false
-   self.nrec = 1 -- ???????
-   self.saved_node_vals = {}
-   self.saved_glob_vals = {}
---[[
+   self.saved_glob_vals = nil
+   self.saved_time = nil
    self.plist = {}
+   self.node_vars = {}
+   self.saved_node_vals = {} -- FIXME FIXME
+   self.nrec = 0
    self.stepmap = {}
-   self.nrecstep = 0
-]]
 end
 
 do
@@ -71,8 +68,8 @@ do
 
       -- Try to parse QA or MAT records first
       -- only if at least one line of heading is read
-      local rname = deblank(rec:sub(1, 18))
-      local qa = qa_codes[rname]
+      local uname = deblank(rec:sub(1, 18))
+      local qa = qa_codes[uname]
       if qa then
          -- QA record
          if self.qa[qa.key] then
@@ -99,7 +96,7 @@ do
          mat = ckne(deblank(mat), 'Material')
          self.mats[id] = mat
          urec = true
-      elseif xtra_u_records[rname] then
+      elseif xtra_u_records[uname] then
          -- known and ignored record, switch state nevertheless
          urec = true
       elseif self.title_expected then
@@ -182,15 +179,78 @@ do
    end
 end
 
-local function commit_vars(self)
-   -- save accumulated data
-   if not self.vars_defined then
+do
+   -- significant 1P records
+   local p_records = {
+      STEP = { false, 'LOAD_INCR', 'LOAD_STEP',
+               rdr = rdr('*18 I12 I12 I12') },
+      GK = { 'GK', rdr = rdr('*18 E12') },
+      HID = { 'HID', rdr = rdr('*18 I12') },
+      AX = { 'AX1', 'AX2', 'AX3', 'AX4', 'AX5', 'AX6',
+             rdr = rdr('*18 E12 E12 E12 E12 E12 E12') },
+      GM = { rdr = rdr('*18 E12') },
+      SUBC = { rdr = rdr('*18 I12') },
+      MODE = { 'MODE', rdr = rdr('*18 I12') },
+   }
+
+   function Exo2_writer_class:rec1P(rec)
+      local pname = deblank(rec:sub(1, 18))
+      local pdef = p_records[pname]
+      if pdef then
+         local vals = { pdef.rdr(rec) }
+         for k, name in ipairs(pdef) do
+            if name then
+               -- determine names of global vars before 1st 100C block
+               if self.nrec == 0 then
+                  table.insert(self.glob_vars, name)
+               end
+               self.plist[name] = vals[k]
+            end
+         end
+      else
+         io.stderr:write('Ignoring unknown 1P record: ', rec, '\n')
+      end
+   end
+
+end
+
+local function commit_saved(self)
+   -- write saved values
+   assert(self.saved_glob_vals and
+             self.saved_node_vals and
+             self.saved_time and
+             self.nrec == 1,
+          'Internal error: unexpected commit')
+
+   -- time
+   self.f:write_time_step(self.nrec, self.saved_time)
+
+   -- global variables
+   self.f:write_glob_vars(self.nrec, self.saved_glob_vals)
+
+   -- node variables
+   for k, var in ipairs(self.node_vars) do
+      self.f:write_node_var(self.nrec, var, self.saved_node_vals[k])
+   end
+
+   -- cleanup
+   self.saved_time = nil
+   self.saved_glob_vals = nil
+   self.saved_node_vals = nil
+end
+
+do
+
+--[[
+      assert(self.
+
+
+   if not self.vars_defined@ then
       -- define global and nodal variables
-      self.f:define_glob_vars(self.glob_vars)
       for _, var in ipairs(self.node_vars) do
          self.f:define_node_var(var)
       end
-      self.vars_defined = true
+      self.vars_defined@ = true
       -- save accumulated values of node variables
       for k, var in ipairs(self.node_vars) do
          self.f:write_node_var(self.nrec, var, self.saved_node_vals[k])
@@ -199,12 +259,41 @@ local function commit_vars(self)
    -- save accumulated values of global variables
    self.f:write_glob_vars(self.nrec, self.saved_glob_vals)
 end
+]]--
 
-function Exo2_writer_class:rec1P(rec)
---   table.insert(self.plist, rec)
-end
+   function Exo2_writer_class:rec100C(blk)
+      local nstp = blk.nstep
+      local blk_nrec = self.stepmap[nstp]
+      -- register step if required
+      if not blk_nrec then
+         -- new step
+         if self.nrec == 0 then
+            -- the 1st 100C block
+            -- global variables are ready to be defined
+            self.f:define_glob_vars(self.glob_vars)
+            -- plist contains values to write later, save them
+            self.saved_glob_vals = self.plist
+            -- save time
+            self.saved_time = blk.val
+         elseif self.nrec == 1 then
+            -- commit saved data
+            commit_saved(self)
+         end
 
-function Exo2_writer_class:rec100C(blk)
+         self.nrec = self.nrec + 1
+         blk_nrec = self.nrec
+         self.stepmap[nstp] = blk_nrec
+
+         -- write global variables each new step
+         if self.nrec > 1 then
+            self.f:write_time_step(self.nrec, blk.val)
+            self.f:write_glob_vars(self.nrec, self.plist)
+         end
+
+      end
+
+      self.plist = {}
+
 --[[
    -- add 1P records reference
    blk.P = self.plist
@@ -223,13 +312,16 @@ function Exo2_writer_class:rec100C(blk)
    self.frd[istp] = self.frd[istp] or {}
    table.insert(self.frd[istp], blk)
 ]]
-   io.stderr:write(string.format(
-                      'Read block %s step %d\n',
-                      blk.var.name, blk.nstep))
+      io.stderr:write(string.format(
+                         'Read block %s step %d\n',
+                         blk.var.name, blk.nstep))
+   end
 end
 
 function Exo2_writer_class.rec9999(self)
-   commit_vars(self)
+   if self.nrec == 1 then
+      commit_saved(self)
+   end
    io.stderr:write('FRD file processed.\n')
    self.f:close()
 end

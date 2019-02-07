@@ -210,7 +210,7 @@ local function read_var_block(f)
    return blk
 end
 
-local function read_frd(fname)
+local function read_frd(fname, writer)
    -- Read FRD data file produced by CalculiX
 
    local keycodefmt = rdr('*1 I4 A1')
@@ -219,11 +219,9 @@ local function read_frd(fname)
    local recfmt23C = rdr('*1 *4 *1 *18 I12 *37 I1')
    local recfmt100C = rdr('*1 *4 *1 A6 E12 I12 A20 I2 I5 A10 I2')
 
-   local frd, key, plist, stepmap, nrecstep = {}, 0, {}, {}, 0
+   local key = 0
 
    local f = assert(io.open(fname, 'r'), 'file not found')
-
-   frd.user = {}
 
    while key ~= 9999 do
       local l = assert(f:read(), 'Record expected')
@@ -233,33 +231,25 @@ local function read_frd(fname)
 
       if key == 1 and code == 'C' then
          -- 1C record, model name
-         frd.model_name = recfmt1C(l)
+         writer:rec1C(recfmt1C(l))
       elseif key == 1 and code == 'U' then
          -- 1U record, user metadata
-         table.insert(frd.user, recfmt1UP(l))
+         writer:rec1U(recfmt1UP(l))
       elseif key == 2 and code == 'C' then
          -- 2C record, node coordinates
          local nnodes, fmt = recfmt23C(l)
          ck(nnodes, 'number of nodes')
          ck(fmt, 'format')
-         if frd.nodes then
-            error('Multiple 2C node blocks are not supported')
-         else
-            frd.nodes = read_node_block(f, fmt, nnodes, 3)
-         end
+         writer:rec2C(read_node_block(f, fmt, nnodes, 3))
       elseif key == 3 and code == 'C' then
          -- 3C record, element definitions
          local nelts, fmt = recfmt23C(l)
          ck(nelts, 'number of elements')
          ck(fmt, 'format')
-         if frd.elts then
-            error('Multiple 3C element blocks are not supported')
-         else
-            frd.elts = read_el_block(f, fmt, nelts)
-         end
+         writer:rec3C(read_el_block(f, fmt, nelts))
       elseif key == 1 and code == 'P' then
          -- 1P record, results metadata
-         table.insert(plist, recfmt1UP(l))
+         writer:rec1P(recfmt1UP(l))
       elseif key == 100 and code == 'C' then
          -- 100C record, nodal result block
          local sname, val, nnodes, text, typ, nstp, analys, fmt =
@@ -283,34 +273,89 @@ local function read_frd(fname)
          blk.type = ck(typ)
          blk.nstep = ck(nstp)
          blk.analysis = deblank(analys)
-         -- add 1P records reference
-         blk.P = plist
-         plist = {}
 
-         local istp = stepmap[nstp]
-         -- register step if required
-         if not istp then
-            nrecstep = nrecstep + 1
-            istp = nrecstep
-            stepmap[nstp] = istp
-         end
-         -- istp points to number of output step
-         -- where the block is stored
-         frd[istp] = frd[istp] or {}
-         table.insert(frd[istp], blk)
-         io.stderr:write(string.format(
-                            'Read block %s step %d\n',
-                            blk.var.name, blk.nstep))
+         writer:rec100C(blk)
       elseif key == 9999 then
          -- last record
          f:close()
+         writer:rec9999()
       else
          error(string.format('Unknown record %d%c\n', key, code))
       end
    end
-   return frd
+   return writer
+end
+
+-- simple table writer
+local table_writer_class = {}
+
+-- constructor
+local function table_writer()
+   return setmetatable({}, { __index = table_writer_class } )
+end
+
+-- record processors
+function table_writer_class:rec1C(rec)
+   -- initial record
+   self.frd = {}
+   self.frd.model_name = rec
+   self.frd.user = {}
+   self.plist = {}
+   self.stepmap = {}
+   self.nrecstep = 0
+end
+
+function table_writer_class:rec1U(rec)
+   table.insert(self.frd.user, rec)
+end
+
+function table_writer_class:rec2C(rec)
+   if self.frd.nodes then
+      error('Multiple 2C node blocks are not supported')
+   else
+      self.frd.nodes = rec
+   end
+end
+
+function table_writer_class:rec3C(rec)
+   if self.frd.elts then
+      error('Multiple 3C element blocks are not supported')
+   else
+      self.frd.elts = rec
+   end
+end
+
+function table_writer_class:rec1P(rec)
+   table.insert(self.plist, rec)
+end
+
+function table_writer_class:rec100C(blk)
+   -- add 1P records reference
+   blk.P = self.plist
+   self.plist = {}
+
+   local nstp = blk.nstep
+   local istp = self.stepmap[nstp]
+   -- register step if required
+   if not istp then
+      self.nrecstep = self.nrecstep + 1
+      istp = self.nrecstep
+      self.stepmap[nstp] = istp
+   end
+   -- istp points to number of output step
+   -- where the block is stored
+   self.frd[istp] = self.frd[istp] or {}
+   table.insert(self.frd[istp], blk)
+   io.stderr:write(string.format(
+                      'Read block %s step %d\n',
+                      blk.var.name, blk.nstep))
+end
+
+function table_writer_class.rec9999(_)
+   io.stderr:write('FRD file processed.\n')
 end
 
 return {
    read_frd = read_frd,
+   table_writer = table_writer,
 }

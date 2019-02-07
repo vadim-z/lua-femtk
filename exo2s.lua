@@ -23,15 +23,22 @@ local function define_gen(self)
       type = self.numtype,
       dims = { 'time_step' }
    }
+   self.vals_fixed = {}
 end
 
-function Exo2Class.add_title(self, title)
+-- initialization method
+function Exo2Class:init(fname)
+   define_gen(self)
+   self.filename = fname
+end
+
+function Exo2Class:define_title(title)
    assert(not self.NCfile, 'Unexpected title definition')
    self.atts.title = title
 end
 
 -- add QA records
-function Exo2Class.add_qa(self, qa)
+function Exo2Class:add_qa(qa)
    assert(not self.NCfile, 'Unexpected QA records definition')
    local nqa = self.dims.num_qa_rec
    if nqa then
@@ -40,7 +47,7 @@ function Exo2Class.add_qa(self, qa)
    else
       -- create qa variable
       self.dims.num_qa_rec = 1
-      self.vars.qa_rec = {
+      self.vars.qa_records = {
          type = netCDF.NC.CHAR,
          dims = { 'num_qa_rec', 'four', 'len_string' }
       }
@@ -49,12 +56,12 @@ function Exo2Class.add_qa(self, qa)
 
    table.insert(self.vals_fixed.qa_records, qa.code)
    table.insert(self.vals_fixed.qa_records, qa.ver)
-   table.insert(self.vals_fixed.qa_records, qa.data)
+   table.insert(self.vals_fixed.qa_records, qa.date)
    table.insert(self.vals_fixed.qa_records, qa.time)
 end
 
 -- define nodes and related variables
-function Exo2Class.define_nodes(self, nodes)
+function Exo2Class:define_nodes(nodes)
    assert(not self.NCfile, 'Unexpected nodes definition')
    local ndim = #nodes
    if ndim > 0 then
@@ -79,7 +86,7 @@ function Exo2Class.define_nodes(self, nodes)
 end
 
 -- define element blocks and related variables
-function Exo2Class.define_els(self, els, mats)
+function Exo2Class:define_els(els, mats)
    assert(not self.NCfile, 'Unexpected elements definition')
    -- table of connect ... variables definition
    local conn_def = {}
@@ -99,7 +106,7 @@ function Exo2Class.define_els(self, els, mats)
    for k, el in ipairs(els) do
       local id = el.id
       blocks[id] = blocks[id] or {}
-      local bkey = string:format('%s%d', el.type, #el)
+      local bkey = string.format('%s%d', el.type, #el)
       -- try to find block by its id and type
       local bl_num = blocks[id][bkey]
       local block, el_map
@@ -227,7 +234,7 @@ function Exo2Class.define_els(self, els, mats)
 end
 
 -- add global variable
-function Exo2Class.add_glob_var(self, varname)
+function Exo2Class:define_glob_var(varname)
    assert(not self.NCfile, 'Unexpected global variable definition')
    local n = self.dims.num_glo_var
    if n then
@@ -251,7 +258,7 @@ function Exo2Class.add_glob_var(self, varname)
 end
 
 -- add nodal variable
-function Exo2Class.add_node_var(self, varname)
+function Exo2Class:define_node_var(varname)
    assert(not self.NCfile, 'Unexpected nodal variable definition')
    local n = self.dims.num_nod_var or 0
    n = n + 1
@@ -275,3 +282,31 @@ function Exo2Class.add_node_var(self, varname)
    }
 
 end
+
+local function create_file(self)
+   assert(not self.NCfile, 'File already created')
+   self.NCfile = netCDF.NCFile()
+   self.NCfile:create(self.filename, self)
+
+   -- write fixed variables
+   for name, var in pairs(self.vals_fixed) do
+      self.NCfile:write_var(name, var)
+   end
+end
+
+function Exo2Class:close()
+   assert(self.NCfile, 'File not created yet')
+   self.NCfile:close()
+   self.NCfile = nil
+end
+
+-- constructor
+local function Exo2File()
+   return setmetatable({}, { __index = Exo2Class } )
+end
+
+return {
+   Exo2File = Exo2File,
+   -- temporary
+   create_exo2_file = create_file,
+}

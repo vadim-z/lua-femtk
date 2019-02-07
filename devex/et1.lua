@@ -42,6 +42,14 @@ f:write_glob_vars(2, { zoo = 2, goo = 3} )
 f:write_glob_vars(1, { goo = 100, zoo = 900 } )
 f:write_time_step(1, 0.5)
 f:write_time_step(2, 0.7)
+
+f:write_node_var(1, 'UX', { 1.1, 1.2, 1.3, 1.4})
+f:write_node_var(1, 'UZ', { -1.1, -1.2, -1.3, -1.4})
+f:write_node_var(1, 'UY', { 0.01, 0.02, 0.03, 0.04})
+f:write_node_var(2, 'UY', { 2.1, 2.2, 2.3, 2.4})
+f:write_node_var(2, 'UZ', { -2.1, -2.2, -2.3, -2.4})
+f:write_node_var(2, 'UX', { 0.01, 0.02, 0.03, 0.04})
+
 f:close()
 
 -- rPrint(f, 100000)

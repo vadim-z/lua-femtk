@@ -317,6 +317,18 @@ function Exo2Class:write_glob_vars(kstep, vars)
    self.NCfile:write_var('vals_glo_var', vals, kstep)
 end
 
+-- writing values of nodal variable
+function Exo2Class:write_node_var(kstep, varname, vals)
+   assert(self.NCfile, 'File not created yet')
+
+   local k = assert(self.map_node_var[varname],
+                    'Node variable ' .. varname .. ' not found')
+
+   local vals_name = string.format('vals_nod_var%d', k)
+
+   self.NCfile:write_var(vals_name, vals, kstep)
+end
+
 function Exo2Class:close()
    assert(self.NCfile, 'File not created yet')
    self.NCfile:close()

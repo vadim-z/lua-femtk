@@ -1,5 +1,5 @@
 -- Module to write simplified EXODUS II files
-local netCDF = require('netCDF')
+local netCDF = require('netCDF/netCDF')
 
 local Exo2Class = {}
 

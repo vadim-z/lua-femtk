@@ -1,4 +1,4 @@
-local R = require('readfix53')
+local R = require('FRD/readfix53')
 
 local rdr = R.fixed_reader
 local ck = R.check_val

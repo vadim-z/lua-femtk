@@ -1,4 +1,4 @@
-local EX2 = require('exo2s')
+local EX2 = require('netCDF/exo2s')
 
 local function rPrint(s, l, i) -- recursive Print (structure, limit, indent)
    l = (l) or 100; i = i or "";	-- default item limit, indent string

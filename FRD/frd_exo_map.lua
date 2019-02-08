@@ -1,5 +1,5 @@
-local exo2s = require('exo2s')
-local readfix = require('readfix53')
+local exo2s = require('netCDF/exo2s')
+local readfix = require('FRD/readfix53')
 
 -- aux functions
 local rdr = readfix.fixed_reader

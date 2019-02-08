@@ -1,4 +1,4 @@
-local NC = require('netCDF')
+local NC = require('netCDF/netCDF')
 
 local def = {
    fmt = 2,

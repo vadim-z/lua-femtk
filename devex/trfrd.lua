@@ -1,4 +1,4 @@
-local R = require('read_frd')
+local R = require('FRD/read_frd')
 
 local function rPrint(s, l, i) -- recursive Print (structure, limit, indent)
 	l = (l) or 100; i = i or "";	-- default item limit, indent string

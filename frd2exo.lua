@@ -1,5 +1,5 @@
-local read_frd = require('read_frd')
-local frd_exo_map = require('frd_exo_map')
+local read_frd = require('FRD/read_frd')
+local frd_exo_map = require('FRD/frd_exo_map')
 
 local usage = [[
 

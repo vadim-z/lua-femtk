@@ -32,9 +32,7 @@ f:define_els(
 )
 
 f:define_glob_vars{'goo', 'zoo'}
-f:define_node_var('UX')
-f:define_node_var('UY')
-f:define_node_var('UZ')
+f:define_node_vars{'UX', 'UY', 'UZ'}
 
 f:write_glob_vars(2, { zoo = 2, goo = 3} )
 f:write_glob_vars(1, { goo = 100, zoo = 900 } )

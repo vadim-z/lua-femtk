@@ -39,9 +39,7 @@ function Exo2_writer_class:rec1C(_)
    self.saved_glob_vals = nil
    self.saved_time = nil
    self.plist = {}
-   self.node_vars = {}
-   self.map_node_vars = {}
-   self.saved_node_vals = {} -- FIXME FIXME
+   self.saved_node_vals = nil
    self.nrec = 0
    self.stepmap = {}
 end
@@ -230,8 +228,8 @@ local function commit_saved(self)
    self.f:write_glob_vars(self.nrec, self.saved_glob_vals)
 
    -- node variables
-   for k, var in ipairs(self.node_vars) do
-      self.f:write_node_var(self.nrec, var, self.saved_node_vals[k])
+   for name, val in pairs(self.saved_node_vals) do
+      self.f:write_node_var(self.nrec, name, val)
    end
 
    -- cleanup
@@ -241,26 +239,6 @@ local function commit_saved(self)
 end
 
 do
-
---[[
-      assert(self.
-
-
-   if not self.vars_defined@ then
-      -- define global and nodal variables
-      for _, var in ipairs(self.node_vars) do
-         self.f:define_node_var(var)
-      end
-      self.vars_defined@ = true
-      -- save accumulated values of node variables
-      for k, var in ipairs(self.node_vars) do
-         self.f:write_node_var(self.nrec, var, self.saved_node_vals[k])
-      end
-   end
-   -- save accumulated values of global variables
-   self.f:write_glob_vars(self.nrec, self.saved_glob_vals)
-end
-]]--
    local function first_step(self, blk)
       -- actions at the 1st step
 
@@ -271,6 +249,7 @@ end
       self.saved_glob_vals = self.plist
       -- save time
       self.saved_time = blk.val
+      self.saved_node_vals = {}
       -- add attributes related to analysis
       local info = string.format('Analysis type: %s %d',
                                  blk.analysis, blk.type)
@@ -322,72 +301,9 @@ end
       else
          error('Unknown variable type: ', typ)
       end
-      return ix, suf
+      return suf, ix
    end
 
---[[
-
-   local function assign_block(self, varblk)
-      -- assign FRD variable block to EXODUS II model
-      -- define names and map of node variables
-
-      -- create components map
-      local map = self.map_node_vars
-      local base = #map
-      for k = 1, varblk.ncomps do
-         local comp = varblk[k]
-         local typ = comp.type
-         if typ == 1 then
-            -- scalar
-            map[base+1] = k
-         elseif typ == 2 or typ == 12 then
-            -- vector or amp/phase vector
-            map[base+comp.ind1] = k
-         elseif typ == 4 then
-            -- (symmetric?) 2-tensor
-            local eord = tensor_ord[comp.ind1][comp.ind2]
-            map[base+eord] = k
-         elseif typ == 14 then
-            -- amp/phase 2-symtensor
-            local eord = tensor_ord[comp.ind1][comp.ind2]
-            if comp.name:sub(1, 3) == 'MAG' then
-               eord = eord + 0
-            elseif comp.name:sub(1, 3) == 'PHA' then
-               eord = eord + 6
-            else
-               error('Bad component name for variable type 14: ', comp.name)
-            end
-            map[base+eord] = k
-         else
-            error('Unknown variable type: ', typ)
-         end
-      end
-
-      -- iterate over mapped components, collect names
-      for k, kcomp in ipairs(map) do
-         -- construct name
-         local typ = varblk[kcomp].typ
-         local name = varblk[kcomp].name
-         local suf
-         if typ == 1 then
-            suf = ''
-         elseif typ == 2 then
-            suf = '_' .. name:sub(1, -2) .. vec_suf[k]
-         elseif typ == 4 then
-            suf = '_' .. name:sub(1, -3) .. t2_suf[k]
-         elseif typ == 12 then
-            local kc = 1 + (k-1)%3
-            suf = '_' .. name:sub(1, -2) .. vec_suf[kc]
-         elseif typ == 14 then
-            local kc = 1 + (k-1)%6
-            suf = '_' .. name:sub(1, -3) .. t2_suf[kc]
-         end
-
-         table.insert(self.node_vars, varblk.name .. suf)
-      end
-
-   end
-]]
    function Exo2_writer_class:rec100C(blk)
       local nstp = blk.nstep
       local blk_nrec = self.stepmap[nstp]
@@ -414,30 +330,35 @@ end
       end
 
       self.plist = {}
+
       if self.nrec == 1 then
          -- definition phase
---         assign_block(self, blk.var)
 
+         local vars = {}
+         local varblk = blk.var
+         for k = 1, varblk.ncomps do
+            local comp = varblk[k]
+            -- map subcomponent
+            local suf, ix = map_subcomp(comp)
+            -- add name
+            local name = varblk.name .. suf
+            vars[ix] = name
+            -- save value
+            self.saved_node_vals[name] = blk[k]
+         end
+         -- define node variables
+         self.f:define_node_vars(vars)
+      else
+         -- variables are defined, just write them
+         local varblk = blk.var
+         for k = 1, varblk.ncomps do
+            -- variable name
+            local name = varblk.name .. map_subcomp(varblk[k])
+            -- write value
+            self.f:write_node_var(self.nrec, name, blk[k])
+         end
       end
 
---[[
-   -- add 1P records reference
-   blk.P = self.plist
-   self.plist = {}
-
-   local nstp = blk.nstep
-   local istp = self.stepmap[nstp]
-   -- register step if required
-   if not istp then
-      self.nrecstep = self.nrecstep + 1
-      istp = self.nrecstep
-      self.stepmap[nstp] = istp
-   end
-   -- istp points to number of output step
-   -- where the block is stored
-   self.frd[istp] = self.frd[istp] or {}
-   table.insert(self.frd[istp], blk)
-]]
       io.stderr:write(string.format(
                          'Read block %s step %d\n',
                          blk.var.name, blk.nstep))

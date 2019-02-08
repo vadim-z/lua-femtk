@@ -279,16 +279,16 @@ function Exo2Class:define_glob_vars(varnames)
    end
 end
 
--- add nodal variable
+-- add node variable
 function Exo2Class:define_node_var(varname)
-   assert(not self.NCfile, 'Unexpected nodal variable definition')
+   assert(not self.NCfile, 'Unexpected node variable definition')
    local n = self.dims.num_nod_var or 0
    n = n + 1
    self.dims.num_nod_var = n
    local vals_name = string.format('vals_nod_var%d', n)
 
    if n == 1 then
-      -- create names of nodal variables
+      -- create names of node variables
       self.vars.name_nod_var = {
          type = netCDF.NC.CHAR,
          dims = { 'num_nod_var', 'len_string' }
@@ -300,12 +300,19 @@ function Exo2Class:define_node_var(varname)
 
    self.map_node_var[varname] = n
 
-   -- create nodal variable
+   -- create node variable
    self.vars[vals_name] = {
       type = self.numtype,
       dims = { 'time_step', 'num_nodes' }
    }
 
+end
+
+-- add ordered block of node variables
+function Exo2Class:define_node_vars(varlist)
+   for _, var in ipairs(varlist) do
+      self:define_node_var(var)
+   end
 end
 
 local function create_file(self)

@@ -1,7 +1,7 @@
 local function write_nodes(f, mesh)
    f:write('*NODE, NSET=Nall\n')
    for k = 1, #mesh.nodes do
-      f:write(string.format('%10u,%12.5e,%12.5e,%12.5e\n', k, 
+      f:write(string.format('%10u,%12.5e,%12.5e,%12.5e\n', k,
                             unpack(mesh.nodes[k])))
    end
 end
@@ -25,7 +25,7 @@ end
 
 local function write_els(f, mesh)
    -- FIXME FIXME: determine order by the 1st element
-   f:write(string.format('*ELEMENT, TYPE=C3D%d, ELSET=Eall\n', 
+   f:write(string.format('*ELEMENT, TYPE=C3D%d, ELSET=Eall\n',
                          #mesh.elems[1].nodes))
    for ke = 1, #mesh.elems do
       local nodes = mesh.elems[ke].nodes
@@ -80,9 +80,9 @@ end
 local function write_model_boundary(f, mesh)
    -- write boundary conditions defined as a part of model
    f:write('*BOUNDARY\n')
-   for k, bdisp in ipairs(mesh.bdisp) do
+   for _, bdisp in ipairs(mesh.bdisp) do
       for kd = 1, 3 do
-         f:write(string.format('%10u,%d,%d,%12.5e\n', 
+         f:write(string.format('%10u,%d,%d,%12.5e\n',
                                bdisp[1], kd, kd, bdisp[1+kd]))
       end
    end
@@ -119,4 +119,3 @@ end
 return {
    write_mesh_ccx_tets = write_mesh_ccx_tets,
 }
-

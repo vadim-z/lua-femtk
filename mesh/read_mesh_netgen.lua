@@ -23,7 +23,7 @@ end
 local function read_nodes(f)
    local nnodes = gettoks(f)
    local nodes = {}
-   for i = 1, nnodes do
+   for _ = 1, nnodes do
       table.insert(nodes, {gettoks(f)})
    end
    return nodes
@@ -32,7 +32,7 @@ end
 local function read_elems(f)
    local nelems = gettoks(f)
    local elems = {}
-   for i = 1, nelems do
+   for _ = 1, nelems do
       local el = {gettoks(f)}
       local mark = el[1]
       table.remove(el, 1)
@@ -53,10 +53,10 @@ local function read_mesh_netgen(fname)
 end
 
 local function make_sets(mesh)
-   -- Generate element and node sets corresponding to 
+   -- Generate element and node sets corresponding to
    -- material and boundary markers
    local vol_el, vol_n, surf_n = {}, {}, {}
-   
+
    -- enumerate volume elements
    for ke = 1, #mesh.elems do
       local m = mesh.elems[ke].mark
@@ -68,7 +68,7 @@ local function make_sets(mesh)
          vol_n[m][nodes[kn]] = true
       end
    end
-   
+
    -- enumerate surface elements
    for ke = 1, #mesh.selems do
       local m = mesh.selems[ke].mark
@@ -87,4 +87,3 @@ return {
    read_mesh_netgen = read_mesh_netgen,
    make_sets = make_sets,
 }
-

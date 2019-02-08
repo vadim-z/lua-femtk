@@ -4,8 +4,17 @@ local netCDF = require('netCDF')
 local Exo2Class = {}
 
 -- initialize general EXODUS II entities
-local function define_gen(self)
-   self.numtype = netCDF.NC.DOUBLE
+local function define_gen(self, fp_type)
+   local wsize
+   if fp_type == 'float' then
+      self.numtype = netCDF.NC.FLOAT
+      wsize = 4
+   elseif fp_type == 'double' then
+      self.numtype = netCDF.NC.DOUBLE
+      wsize = 8
+   else
+      error('Invalid floating point type: ', fp_type)
+   end
 
    self.dims = {}
    self.dims.time_step = 0
@@ -15,7 +24,7 @@ local function define_gen(self)
    self.atts = {}
    self.atts.version = { 2.02, type = netCDF.NC.FLOAT }
    self.atts.api_version = { 2.02, type = netCDF.NC.FLOAT }
-   self.atts.floating_point_word_size = { 8, type = netCDF.NC.INT }
+   self.atts.floating_point_word_size = { wsize, type = netCDF.NC.INT }
    -- Large model file
    self.atts.file_size = { 1, type = netCDF.NC.INT }
    self.vars = {}
@@ -27,8 +36,8 @@ local function define_gen(self)
 end
 
 -- initialization method
-function Exo2Class:init(fname)
-   define_gen(self)
+function Exo2Class:init(fname, fp_type)
+   define_gen(self, fp_type or 'double')
    self.filename = fname
 end
 

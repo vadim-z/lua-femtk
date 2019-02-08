@@ -11,13 +11,14 @@ local deblank = readfix.deblank
 local Exo2_writer_class = {}
 
 -- constructor
-local function Exo2_writer(filename)
-   return setmetatable({}, { __index = Exo2_writer_class } ):init(filename)
+local function Exo2_writer(...)
+   return setmetatable({}, { __index = Exo2_writer_class } ):init(...)
 end
 
 -- initialization
-function Exo2_writer_class:init(filename)
+function Exo2_writer_class:init(filename, fp_type)
    self.filename = filename
+   self.fp_type = fp_type
    return self
 end
 
@@ -25,7 +26,7 @@ end
 function Exo2_writer_class:rec1C(_)
    -- initial record
    self.f = exo2s.Exo2File()
-   self.f:init(self.filename)
+   self.f:init(self.filename, self.fp_type)
 
    -- initialize internal state variables
    self.title = ''

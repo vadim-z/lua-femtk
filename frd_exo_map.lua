@@ -40,6 +40,7 @@ function Exo2_writer_class:rec1C(_)
    self.saved_time = nil
    self.plist = {}
    self.node_vars = {}
+   self.map_node_vars = {}
    self.saved_node_vals = {} -- FIXME FIXME
    self.nrec = 0
    self.stepmap = {}
@@ -260,7 +261,133 @@ do
    self.f:write_glob_vars(self.nrec, self.saved_glob_vals)
 end
 ]]--
+   local function first_step(self, blk)
+      -- actions at the 1st step
 
+      -- the 1st 100C block
+      -- global variables are ready to be defined
+      self.f:define_glob_vars(self.glob_vars)
+      -- plist contains values to write later, save them
+      self.saved_glob_vals = self.plist
+      -- save time
+      self.saved_time = blk.val
+      -- add attributes related to analysis
+      local info = string.format('Analysis type: %s %d',
+                                 blk.analysis, blk.type)
+      self.f:add_info(info)
+   end
+
+   local tensor_ord = {
+      { 1, 4, 5 },
+      { 4, 2, 6 },
+      { 5, 6, 3 } }
+
+   local vec_suf = { 'X', 'Y', 'Z' }
+   local t2_suf = { 'XX', 'YY', 'ZZ', 'XY', 'XZ', 'YZ' }
+
+   local function map_subcomp(comp)
+      -- find suffix and index of a subcomponent
+      local typ = comp.type
+      local name = comp.name
+      local ix, suf
+      if typ == 1 then
+         -- scalar
+         ix = 1
+         suf = ''
+      elseif typ == 2 then
+         -- vector
+         ix = comp.ind1
+         suf = '_' .. name:sub(1, -2) .. vec_suf[ix]
+      elseif typ == 4 then
+         -- (symmetric?) 2-tensor
+         ix = tensor_ord[comp.ind1][comp.ind2]
+         suf = '_' .. name:sub(1, -3) .. t2_suf[ix]
+      elseif typ == 12 then
+         -- amp/phase vector
+         ix = comp.ind1
+         local kc = 1 + (ix-1)%3
+         suf = '_' .. name:sub(1, -2) .. vec_suf[kc]
+      elseif typ == 14 then
+         -- amp/phase 2-symtensor
+         ix = tensor_ord[comp.ind1][comp.ind2]
+         if comp.name:sub(1, 3) == 'MAG' then
+            ix = ix + 0
+         elseif comp.name:sub(1, 3) == 'PHA' then
+            ix = ix + 6
+         else
+            error('Bad component name for variable type 14: ', comp.name)
+         end
+         local kc = 1 + (ix-1)%6
+         suf = '_' .. name:sub(1, -3) .. t2_suf[kc]
+      else
+         error('Unknown variable type: ', typ)
+      end
+      return ix, suf
+   end
+
+--[[
+
+   local function assign_block(self, varblk)
+      -- assign FRD variable block to EXODUS II model
+      -- define names and map of node variables
+
+      -- create components map
+      local map = self.map_node_vars
+      local base = #map
+      for k = 1, varblk.ncomps do
+         local comp = varblk[k]
+         local typ = comp.type
+         if typ == 1 then
+            -- scalar
+            map[base+1] = k
+         elseif typ == 2 or typ == 12 then
+            -- vector or amp/phase vector
+            map[base+comp.ind1] = k
+         elseif typ == 4 then
+            -- (symmetric?) 2-tensor
+            local eord = tensor_ord[comp.ind1][comp.ind2]
+            map[base+eord] = k
+         elseif typ == 14 then
+            -- amp/phase 2-symtensor
+            local eord = tensor_ord[comp.ind1][comp.ind2]
+            if comp.name:sub(1, 3) == 'MAG' then
+               eord = eord + 0
+            elseif comp.name:sub(1, 3) == 'PHA' then
+               eord = eord + 6
+            else
+               error('Bad component name for variable type 14: ', comp.name)
+            end
+            map[base+eord] = k
+         else
+            error('Unknown variable type: ', typ)
+         end
+      end
+
+      -- iterate over mapped components, collect names
+      for k, kcomp in ipairs(map) do
+         -- construct name
+         local typ = varblk[kcomp].typ
+         local name = varblk[kcomp].name
+         local suf
+         if typ == 1 then
+            suf = ''
+         elseif typ == 2 then
+            suf = '_' .. name:sub(1, -2) .. vec_suf[k]
+         elseif typ == 4 then
+            suf = '_' .. name:sub(1, -3) .. t2_suf[k]
+         elseif typ == 12 then
+            local kc = 1 + (k-1)%3
+            suf = '_' .. name:sub(1, -2) .. vec_suf[kc]
+         elseif typ == 14 then
+            local kc = 1 + (k-1)%6
+            suf = '_' .. name:sub(1, -3) .. t2_suf[kc]
+         end
+
+         table.insert(self.node_vars, varblk.name .. suf)
+      end
+
+   end
+]]
    function Exo2_writer_class:rec100C(blk)
       local nstp = blk.nstep
       local blk_nrec = self.stepmap[nstp]
@@ -268,17 +395,7 @@ end
       if not blk_nrec then
          -- new step
          if self.nrec == 0 then
-            -- the 1st 100C block
-            -- global variables are ready to be defined
-            self.f:define_glob_vars(self.glob_vars)
-            -- plist contains values to write later, save them
-            self.saved_glob_vals = self.plist
-            -- save time
-            self.saved_time = blk.val
-            -- add attributes related to analysis
-            local info = string.format('Analysis type: %s %d',
-                                       blk.analysis, blk.type)
-            self.f:add_info(info)
+            first_step(self, blk)
          elseif self.nrec == 1 then
             -- commit saved data
             commit_saved(self)
@@ -297,6 +414,11 @@ end
       end
 
       self.plist = {}
+      if self.nrec == 1 then
+         -- definition phase
+--         assign_block(self, blk.var)
+
+      end
 
 --[[
    -- add 1P records reference

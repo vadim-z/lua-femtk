@@ -16,7 +16,7 @@ local def = {
       a3 = {1.5, type = NC.NC.FLOAT},
    },
    vars = {
-      kkk = { 
+      kkk = {
          type = NC.NC.BYTE,
          atts = {
             id = { 'a', 'q', 'u', type = NC.NC.CHAR },

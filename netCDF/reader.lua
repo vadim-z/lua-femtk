@@ -21,17 +21,11 @@ local NCReaderClass = {}
 -- shortcuts
 local sunpack = string.unpack
 local spacksize = string.packsize
---local tconcat = table.concat
---local tinsert = table.insert
 
 -- padding and alignment
 local function pad4len(len)
    return 3 - (len-1)%4
 end
-
---local function pad4z(len)
---   return ('\0'):rep(pad4len(len))
---end
 
 -- format strings for types
 local type_fmt = {
@@ -46,6 +40,21 @@ local type_fmt = {
 local type_sz = {}
 for t, s in pairs(type_fmt) do
    type_sz[t] = spacksize(s)
+end
+
+-- read array of typed elements
+local function read_typevals(f, typ, n, pad)
+   local len = type_sz[typ]*n
+   if pad then
+      len = len + pad4len(len)
+   end
+   local bin = f:read(len)
+   local arr = {}
+   local pos = 1
+   for k = 1, n do
+      arr[k], pos = sunpack(type_fmt[typ], bin, pos)
+   end
+   return arr
 end
 
 -- block for creating netCDF file and writing the header
@@ -65,21 +74,6 @@ do
    -- read value by format
    local function read_val(f, fmt, sz)
       return (sunpack(fmt,f:read(sz)))
-   end
-
-   -- read array of typed elements
-   local function read_typevals(f, typ, n, pad)
-      local len = type_sz[typ]*n
-      if pad then
-         len = len + pad4len(len)
-      end
-      local bin = f:read(len)
-      local arr = {}
-      local pos = 1
-      for k = 1, n do
-         arr[k], pos = sunpack(type_fmt[typ], bin, pos)
-      end
-      return arr
    end
 
    -- Elements of NetCDF-1/2 format
@@ -205,6 +199,7 @@ do
          -- process the variable
          local n_items = 1
          local n_items_s = 1
+         local len_s
          for kdim = 1, var_rank do
             -- increment
             local dim_ix = var_dims[kdim] + 1
@@ -223,19 +218,24 @@ do
             -- take the dimension into account
             if kdim > 1 or not locrec then
                n_items = n_items * self.dim_list[dim_ix].size
-               if var_type == NC.CHAR and kdim < var_rank then
-                  -- item is a number, or a string
-                  -- string is written as one item
-                  -- so we may exclude the last dimension for
-                  -- character variables specified as
-                  -- (an array of) strings
-                  n_items_s = n_items
+               if var_type == NC.CHAR then
+                  if kdim < var_rank then
+                     -- item is a number, or a string
+                     -- string is written as one item
+                     -- so we may exclude the last dimension for
+                     -- character variables specified as
+                     -- (an array of) strings
+                     n_items_s = n_items
+                  else
+                     len_s = self.dim_list[dim_ix].size
+                  end
                end
             end
          end -- loop over dimensions
 
          var.n_items = n_items
          var.n_items_s = n_items_s
+         var.len_s = len_s
          var.real_vsize = n_items * type_sz[var_type]
 
          if var.rec then
@@ -279,6 +279,10 @@ do
 
       -- initialize number of records
       self.num_recs = read_i4(f)
+      if self.num_recs < 0 then
+         -- streaming mode
+         self.num_recs = math.maxinteger
+      end
 
       -- read dimensions, attributes, variables
       read_dim_list(self)
@@ -293,32 +297,45 @@ do
    end
 end
 
---[=[
--- block for writing values to netCDF files
+-- block for reading values from netCDF files
 do
-   -- expecting invariant:
-   -- f:seek() == f_offs
-
-   local OFFSET_NUMRECS = 4
 
    -- private functions
-   -- add string zero-padded up to length
-   local function add_string(t, s, len, zterm)
-      -- truncate a string if required
-      if zterm then
-         -- force zero-termination, decrease max length by 1
-         s = s:sub(1, len-1)
-      else
-         s = s:sub(1, len)
+
+   -- read array of zero-padded strings
+   -- padding removed
+   local function read_zstrings(f, n, len_s, pad)
+      local len = n*len_s
+      if pad then
+         len = len + pad4len(len)
       end
-      tinsert(t, s)
-      tinsert(t, ('\0'):rep(len - #s))
+      local bin = f:read(len)
+      local arr = {}
+      local pos = 1
+      for k = 1, n do
+         local newpos = pos + len_s
+         local s = bin:sub(pos, newpos-1)
+         pos = newpos
+         -- remove trailing nulls
+         arr[k] = s:match('^.*[^\0]') or ''
+      end
+      return arr
    end
 
-   -- write block of data to the current position
-   local function write_data(self, var, data, pad)
-      local bintbl = {}
-      local fmt = var.val_fmt
+   -- read block of data given variable and record index
+   local function read_data(self, var, irec, as_array)
+      local f = self.f
+
+      -- find offset and seek
+      local offs = var.begin
+      if var.rec then
+         assert(irec and irec <= self.num_recs,
+                'Index of record missing or invalid when reading record variable')
+         -- add required number of records
+         offs = offs + (irec-1)*self.rec_size
+      end
+      self.f:seek('set', offs)
+
       local rank = var.rank
 
       -- type/rank correspondence:
@@ -326,142 +343,57 @@ do
       -- char/1 <--> string
       -- */>0 <--> flat table
 
-      if type(data) ~= 'table' then
-         -- scalar cases
-         if rank == 0 or var.rec and rank ==1 then
-            -- write scalar
-            -- by definition, character rank-1 records go there too
-            tinsert(bintbl, spack(fmt, data))
-         elseif (rank == 1 or var.rec and rank == 2)
-         and var.type == NC.CHAR and type(data) == 'string' then
-            -- write string as 'scalar':
-            -- rank-1 fixed variable or rank-2 record
-            -- length is the size of the last dimension
+      -- no padding in read because we fseek anyway
 
-            -- force null-termination in string arrays,
-            -- according to section 6.29 of
-            -- The NetCDF Fortran 77 Interface Guide:
-            -- Variable-length strings should follow the C convention
-            -- of writing strings with a terminating zero byte so that
-            -- the intended length of the string can be determined when
-            -- it is later read by either C or FORTRAN programs.
-            local zterm = var.rec
-            add_string(bintbl, data,
-                       self.dim_list[var.dimids[rank]].size, zterm)
-         else
-            error('Table expected')
-         end
+      -- scalar cases
+      if rank == 0 or var.rec and rank == 1 then
+         -- read scalar
+         -- by definition, character rank-1 records go there too
+         assert(var.n_items == 1,
+                'Internal error: bad number of items for scalar variable')
+         return read_typevals(f, var.type, 1, false)[1]
+      elseif (rank == 1 or var.rec and rank == 2)
+      and var.type == NC.CHAR and not as_array then
+         -- read string as 'scalar':
+         -- rank-1 fixed variable or rank-2 record
+         -- remove trailing null chars, see writer module
+         assert(var.n_items_s == 1,
+                'Internal error: bad number of items for scalar variable')
+         return read_zstrings(f, 1, var.len_s, false)[1]
+      elseif var.type == NC.CHAR and not as_array then
+         -- flat array of strings,
+         -- fixed of rank > 1 or record of rank > 2
+         return read_zstrings(f, var.n_items_s, var.len_s, false)
       else
-         if var.type == NC.CHAR and not data.array then
-            -- flat array of strings
-            assert(#data == var.n_items_s, 'Incorrect data length')
-            -- size of the last dimension
-            local len = self.dim_list[var.dimids[rank]].size
-            -- force null-termination in string arrays, see above
-            -- string arrays are record variables or
-            -- fixed variables with more than one string item
-            local zterm = var.rec or #data > 1
-            for _, d in ipairs(data) do
-               add_string(bintbl, d, len, zterm)
-            end
-         else
-            -- flat array of scalars
-            assert(#data == var.n_items, 'Incorrect data length')
-            for _, d in ipairs(data) do
-               tinsert(bintbl, spack(fmt, d))
-            end
-         end
+         -- flat array of typed values
+         return read_typevals(f, var.type, var.n_items, false)
       end
-
-      -- write it
-      local bin = tconcat(bintbl)
-      local padstr = ''
-      if pad then
-         padstr = pad4z(#bin)
-      end
-      self.f:write(bin, padstr)
-      self.f_offs = self.f_offs + #bin + #padstr
    end
 
-   -- write fixed/record var by id
-   local function write_var_by_id(self, varid, data, nrec)
-      local var = self.var_list[varid]
-      local offs = var.begin
-      if var.rec then
-         assert(nrec,
-                'Number of record missing when writing record variable')
-         -- add required number of records
-         offs = offs + (nrec-1)*self.rec_size
-      end
-
-      if self.stream then
-         -- streaming mode, no seek
-         assert(self.f_offs == offs,
-                'Invalid order of writes in the streaming mode')
-      else
-         -- seek
-         self.f:seek('set', offs)
-         self.f_offs = offs
-      end
-      -- pad fixed vars
-      local pad = not (var.rec and self.pack_recs)
-      write_data(self, var, data, pad)
-   end
-
-   -- update numrecs
-   local function write_numrecs(self, numrecs_new)
-      if not self.stream and self.numrecs ~= numrecs_new then
-         -- do nothing in streaming mode
-         -- or if the number of records haven't changed
-         local offs = self.f:seek('set', OFFSET_NUMRECS)
-         self.f:write(spack('>i4', numrecs_new))
-         -- return to prev offset
-         self.f:seek('set', offs)
-      end
-      -- update field, just in case
-      self.numrecs = numrecs_new
-   end
-
-   -- public method: write a fixed or variable to netCDF file
-   -- update number of records if required
+   -- public method: read a fixed or record variable from netCDF file
    -- nrec may be missing in case of fixed variable
-   function NCReaderClass:write_var(name, data, nrec)
-      local varid = self.var_list.xref[name]
-      assert(varid, 'Unknown variable ' .. name)
-      write_var_by_id(self, varid, data, nrec)
-      if self.var_list[varid].rec then
-         local numrecs_new = math.max(self.numrecs, nrec)
-         write_numrecs(self, numrecs_new)
-      end
+   function NCReaderClass:read_var(name, irec, as_array)
+      local var = self.var_list.map[name]
+      assert(var, 'Unknown variable ' .. name)
+      return read_data(self, var, irec, as_array)
    end
 
-   -- public method: write every fixed variable to netCDF file
-   function NCReaderClass:write_fixed_vars(vars_data)
-      for varid, var in ipairs(self.var_list) do
-         if not var.rec then
-            local data = vars_data[var.name]
-            assert(data, 'Missing variable ' .. var.name)
-            write_var_by_id(self, varid, data)
+   -- public method: read every fixed/record variable from netCDF file
+   -- all character arrays are read as strings
+   -- give irec to read record variables for that record,
+   -- omit or give nil or false to read all fixed variables
+   function NCReaderClass:read_vars(irec)
+      local arr = {}
+      for _, var in ipairs(self.var_list) do
+         if not var.rec == not irec then
+            arr[var.name] = read_data(self, var, irec, false)
          end
       end
-   end
 
-   -- public method: write every record variable to netCDF file
-   -- nrec may be missing in case of the next record
-   function NCReaderClass:write_record(vars_data, nrec)
-      nrec = nrec or self.numrecs + 1
-      for varid, var in ipairs(self.var_list) do
-         if var.rec then
-            local data = vars_data[var.name]
-            assert(data, 'Missing variable ' .. var.name)
-            write_var_by_id(self, varid, data, nrec)
-         end
-      end
-      write_numrecs(self, nrec)
+      return arr
    end
 
 end
-]=]
 
 -- public method: close netCDF file
 function NCReaderClass:close()

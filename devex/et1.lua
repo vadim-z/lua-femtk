@@ -1,18 +1,5 @@
 local EX2 = require('netCDF/exo2s')
 
-local function rPrint(s, l, i) -- recursive Print (structure, limit, indent)
-   l = (l) or 100; i = i or "";	-- default item limit, indent string
-   if (l<1) then print "ERROR: Item limit reached."; return l-1 end;
-   local ts = type(s);
-   if (ts ~= "table") then print (i,ts,s); return l-1 end
-   print (i,ts);           -- print "table"
-   for k,v in pairs(s) do  -- print "[KEY] VALUE"
-      l = rPrint(v, l, i.."\t["..tostring(k).."]");
-      if (l < 0) then break end
-   end
-   return l
-end
-
 local f = EX2.Exo2File()
 f:init('t1.exo')
 f:define_title('foobar')
@@ -47,6 +34,4 @@ f:write_node_var(2, 'UZ', { -2.1, -2.2, -2.3, -2.4})
 f:write_node_var(2, 'UX', { 0.01, 0.02, 0.03, 0.04})
 
 f:close()
-
--- rPrint(f, 100000)
 

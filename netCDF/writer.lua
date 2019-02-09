@@ -423,7 +423,7 @@ do
 
       if type(data) ~= 'table' then
          -- scalar cases
-         if rank == 0 or var.rec and rank ==1 then
+         if rank == 0 or var.rec and rank == 1 then
             -- write scalar
             -- by definition, character rank-1 records go there too
             tinsert(bintbl, spack(fmt, data))
@@ -517,7 +517,7 @@ do
       self.numrecs = numrecs_new
    end
 
-   -- public method: write a fixed or variable to netCDF file
+   -- public method: write a fixed or record variable to netCDF file
    -- update number of records if required
    -- nrec may be missing in case of fixed variable
    function NCWriterClass:write_var(name, data, nrec)
@@ -559,6 +559,17 @@ end
 
 -- public method: close netCDF file
 function NCWriterClass:close()
+   -- ensure there is no truncated records
+   local end_pos
+   if not self.stream then
+      end_pos = self.f:seek('end', 0)
+   else
+      end_pos = self.f_offs
+   end
+   self.f:write(('\0'):rep(
+         #self.hdr + self.fixed_size + self.rec_size*self.numrecs -
+            end_pos))
+
    self.f:close()
 end
 

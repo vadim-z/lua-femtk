@@ -15,7 +15,7 @@ local NC = {
 }
 
 -- File class
-local NCFileClass = {}
+local NCWriterClass = {}
 
 -- shortcuts
 local spack = string.pack
@@ -257,7 +257,7 @@ do
       -- pack records?
       self.pack_recs = n_rec_vars == 1
 
-      if n_rec_vars == 1 then
+      if self.pack_recs then
          -- pack record variables
          rec_size = packed_rec_size
       end
@@ -381,7 +381,7 @@ do
    end
 
    -- public method: create netCDF file, write the header
-   function NCFileClass:create(fname, ncdef)
+   function NCWriterClass:create(fname, ncdef)
       create_hdr(self, ncdef)
       self.f = assert(io.open(fname, 'wb'))
       assert(self.f:write(self.hdr))
@@ -442,7 +442,7 @@ do
             -- it is later read by either C or FORTRAN programs.
             local zterm = var.rec
             add_string(bintbl, data,
-                       self.dim_list[var.dimids[rank]].size, zterm)
+                       self.dim_list[var.dimids[rank] ].size, zterm)
          else
             error('Table expected')
          end
@@ -451,7 +451,7 @@ do
             -- flat array of strings
             assert(#data == var.n_items_s, 'Incorrect data length')
             -- size of the last dimension
-            local len = self.dim_list[var.dimids[rank]].size
+            local len = self.dim_list[var.dimids[rank] ].size
             -- force null-termination in string arrays, see above
             -- string arrays are record variables or
             -- fixed variables with more than one string item
@@ -520,7 +520,7 @@ do
    -- public method: write a fixed or variable to netCDF file
    -- update number of records if required
    -- nrec may be missing in case of fixed variable
-   function NCFileClass:write_var(name, data, nrec)
+   function NCWriterClass:write_var(name, data, nrec)
       local varid = self.var_list.xref[name]
       assert(varid, 'Unknown variable ' .. name)
       write_var_by_id(self, varid, data, nrec)
@@ -531,7 +531,7 @@ do
    end
 
    -- public method: write every fixed variable to netCDF file
-   function NCFileClass:write_fixed_vars(vars_data)
+   function NCWriterClass:write_fixed_vars(vars_data)
       for varid, var in ipairs(self.var_list) do
          if not var.rec then
             local data = vars_data[var.name]
@@ -543,7 +543,7 @@ do
 
    -- public method: write every record variable to netCDF file
    -- nrec may be missing in case of the next record
-   function NCFileClass:write_record(vars_data, nrec)
+   function NCWriterClass:write_record(vars_data, nrec)
       nrec = nrec or self.numrecs + 1
       for varid, var in ipairs(self.var_list) do
          if var.rec then
@@ -558,16 +558,16 @@ do
 end
 
 -- public method: close netCDF file
-function NCFileClass:close()
+function NCWriterClass:close()
    self.f:close()
 end
 
 -- constructor
-local function NCFile()
-   return setmetatable({}, { __index = NCFileClass } )
+local function NCWriter()
+   return setmetatable({}, { __index = NCWriterClass } )
 end
 
 return {
    NC = NC,
-   NCFile = NCFile,
+   NCWriter = NCWriter,
 }

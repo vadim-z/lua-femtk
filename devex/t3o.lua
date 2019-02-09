@@ -1,4 +1,4 @@
-local NC = require('netCDF/netCDF')
+local NC = require('netCDF/writer')
 
 local def = {
    fmt = 1,
@@ -57,7 +57,7 @@ local def = {
    },
 }
 
-local NCf = NC.NCFile()
+local NCf = NC.NCWriter()
 NCf:create('zzz.nc', def)
 NCf:write_var('kkk', {41})
 NCf:write_var('kkk', 43)

@@ -1,5 +1,5 @@
 -- Module to write simplified EXODUS II files
-local netCDF = require('netCDF/netCDF')
+local netCDF = require('netCDF/writer')
 
 local Exo2Class = {}
 
@@ -326,7 +326,7 @@ end
 
 local function create_file(self)
    assert(not self.NCfile, 'File already created')
-   self.NCfile = netCDF.NCFile()
+   self.NCfile = netCDF.NCWriter()
    self.NCfile:create(self.filename, self)
 
    -- write fixed variables

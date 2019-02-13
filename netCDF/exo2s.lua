@@ -260,6 +260,83 @@ function Exo2Class:define_els(els, mats)
    self.vals_fixed.eb_status = status
 end
 
+-- define node sets and related variables
+function Exo2Class:define_nodesets(nsets, props)
+   assert(not self.NCfile, 'Unexpected node sets definition')
+   if #nsets == 0 then
+      -- nothing to add
+      return
+   end
+   -- add netCDF entities related to nsets
+   -- dimensions
+   self.dims.num_node_sets = #nsets
+
+   -- create node lists and node sets properties
+   local status = {}
+   local prop_vals = {}
+   local ids = {}
+   for kprop = 1, #props do
+      prop_vals[kprop] = {}
+   end
+
+   -- iterate over node sets
+   for kset, nset in ipairs(nsets) do
+      local list = {}
+      -- process all nodes
+      for kn = 1, self.dims.num_nodes do
+         if nset[kn] then
+            table.insert(list, kn)
+         end
+      end
+      -- create node sets dimensions and variables
+      local dimname = string.format('num_nod_ns%d', kset)
+      local varname = string.format('node_ns%d', kset)
+      -- nodes in set
+      self.dims[dimname] = #nset
+
+      self.vars[varname] = {
+         type = netCDF.NC.INT,
+         dims = { dimname },
+      }
+      self.vals_fixed[varname] = list
+
+      -- node sets properties
+      status[kset] = 1
+      ids[kset] = assert(nset.id, 'Absent node set ID')
+      for kprop, name_prop in ipairs(props) do
+         prop_vals[kprop][kset] = assert(nset[name_prop],
+                                     'Absent node set property ' .. name_prop)
+      end
+   end
+
+   -- create extra variables
+   -- add ns_prop1 variable
+   self.vars.ns_prop1 = {
+      type = netCDF.NC.INT,
+      dims = { 'num_node_sets' },
+      atts = { name = 'ID' }
+   }
+   self.vals_fixed.ns_prop1 = ids
+
+   -- add other properties
+   for kprop, name_prop in ipairs(props) do
+      local name = string.format('ns_prop%d', kprop+1)
+      self.vars[name] = {
+         type = netCDF.NC.INT,
+         dims = { 'num_node_sets' },
+         atts = { name = name_prop }
+      }
+      self.vals_fixed[name] = prop_vals[kprop]
+   end
+
+   -- ns_status
+   self.vars.ns_status = {
+      type = netCDF.NC.INT,
+      dims = { 'num_node_sets' },
+   }
+   self.vals_fixed.ns_status = status
+end
+
 -- add global variables
 -- NB: given that
 --     1) current netCDF Lua interface supports writing a variable or a record

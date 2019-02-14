@@ -1,4 +1,5 @@
 local exo2s = require('netCDF/exo2s')
+local netCDF_reader = require('netCDF/reader')
 local readfix = require('FRD/readfix53')
 
 -- aux functions
@@ -16,9 +17,10 @@ local function Exo2_writer(...)
 end
 
 -- initialization
-function Exo2_writer_class:init(filename, fp_type)
-   self.filename = filename
-   self.fp_type = fp_type
+function Exo2_writer_class:init(par)
+   self.filename = par.filename
+   self.fp_type = par.fp_type
+   self.sets = par.sets
    return self
 end
 
@@ -43,6 +45,17 @@ function Exo2_writer_class:rec1C(_)
    self.saved_node_vals = nil
    self.nrec = 0
    self.stepmap = {}
+
+   -- read sets file if required
+   if self.sets then
+      self.set_file = netCDF_reader.NCReader()
+      self.set_file:open(self.sets.filename)
+      self.set_vars = self.set_file:read_vars(false)
+      self.set_file:close()
+   else
+      self.set_file = nil
+   end
+
 end
 
 do
@@ -117,6 +130,38 @@ do
    end
 end
 
+local function save_node_sets(self)
+   if not self.sets then
+      -- no sets, nothing to do
+      return
+   end
+
+   local node_sets = {}
+   local prop_names = { 'SURF', 'VOL' }
+
+   local function add_sets(att_name, prefix, code)
+      local id = self.sets[prefix]
+      if id then
+         local nset = self.set_file.att_list.map[att_name][1]
+         for ks = 1, nset do
+            local set_name = string.format('%s_%d', prefix, ks)
+            local set = self.set_vars[set_name]
+            set.id = id + ks
+            set.SURF = code
+            set.VOL = 1 - code
+            table.insert(node_sets, set)
+         end
+      end
+   end
+
+   -- first, add surface sets
+   add_sets('n_surf_n', 'surfn', 1)
+   -- first, add volume sets
+   add_sets('n_vol_n', 'voln', 0)
+
+   self.f:define_nodesets(node_sets, prop_names)
+end
+
 function Exo2_writer_class:rec2C(rec)
    if self.nodes then
       io.stderr:write('Multiple 2C node blocks; redefining nodes\n')
@@ -124,6 +169,8 @@ function Exo2_writer_class:rec2C(rec)
       self.nodes = true
    end
    self.f:define_nodes(rec)
+   -- attach node sets
+   save_node_sets(self)
 end
 
 do

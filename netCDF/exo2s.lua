@@ -292,7 +292,7 @@ function Exo2Class:define_nodesets(nsets, props)
       local dimname = string.format('num_nod_ns%d', kset)
       local varname = string.format('node_ns%d', kset)
       -- nodes in set
-      self.dims[dimname] = #nset
+      self.dims[dimname] = #list
 
       self.vars[varname] = {
          type = netCDF.NC.INT,

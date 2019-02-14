@@ -117,7 +117,7 @@ local function write_sets_netCDF(mesh, fnames_tbl)
             table.insert(list, set[ki] and 1 or 0)
          end
          def.vars[varname] = {
-            type = NC.NC.INT,
+            type = NC.NC.BYTE,
             dims = { dimname }
          }
          vardata[varname] = list
@@ -137,16 +137,19 @@ local function write_sets_netCDF(mesh, fnames_tbl)
    if fnames_tbl.surf_n then
       mk_sets_netCDF(def, vardata, mesh.surf_n, #mesh.nodes,
                      fnames_tbl.surf_n, 'num_nodes')
+      def.atts.n_surf_n = { #mesh.surf_n, type = NC.NC.INT }
    end
 
    if fnames_tbl.vol_n then
       mk_sets_netCDF(def, vardata, mesh.vol_n, #mesh.nodes,
                      fnames_tbl.vol_n, 'num_nodes')
+      def.atts.n_vol_n = { #mesh.vol_n, type = NC.NC.INT }
    end
 
    if fnames_tbl.vol_el then
       mk_sets_netCDF(def, vardata, mesh.vol_el, #mesh.elems,
                      fnames_tbl.vol_el, 'num_elem')
+      def.atts.n_vol_el = { #mesh.vol_el, type = NC.NC.INT }
    end
 
    local f = NC.NCWriter()
@@ -157,8 +160,6 @@ local function write_sets_netCDF(mesh, fnames_tbl)
 
    f:close()
 end
-
-
 
 local set_writers = {
    txt = write_sets_tbls_txt,

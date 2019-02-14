@@ -461,7 +461,7 @@ do
             end
          else
             -- flat array of scalars
-            assert(#data == var.n_items, 'Incorrect data length')
+            assert(#data == var.n_items, 'Incorrect data length in ' .. var.name)
             for _, d in ipairs(data) do
                tinsert(bintbl, spack(fmt, d))
             end

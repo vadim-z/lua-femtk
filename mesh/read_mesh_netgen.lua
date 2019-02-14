@@ -13,7 +13,7 @@ local function tokenize(s)
    for w in s:gmatch('%S+') do
       table.insert(t, (assert(tonumber(w), 'Lexical error: '..w)))
    end
-   return unpack(t)
+   return table.unpack(t)
 end
 
 local function gettoks(f)

@@ -1,7 +1,7 @@
-require('2de')
-local R = require('read_mesh_netgen')
-local W = require('write_ccx')
-local T = require('ccx_tools')
+-- require('2de')
+local R = require('mesh/read_mesh_netgen')
+local W = require('mesh/write_ccx')
+local T = require('mesh/ccx_tools')
 
 if #arg < 2 then
    error('Not enough arguments!')
@@ -16,4 +16,5 @@ W.write_mesh_ccx_tets(arg[2], M,
                       { vol_n = 'voln',
                         surf_n = 'surfn',
                         vol_el = 'volel',
+                        fmt = 'txt',
                       })

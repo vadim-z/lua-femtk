@@ -2,7 +2,7 @@ local function write_nodes(f, mesh)
    f:write('*NODE, NSET=Nall\n')
    for k = 1, #mesh.nodes do
       f:write(string.format('%10u,%12.5e,%12.5e,%12.5e\n', k,
-                            unpack(mesh.nodes[k])))
+                            table.unpack(mesh.nodes[k])))
    end
 end
 
@@ -64,7 +64,19 @@ local function write_sets(f, kind, prefix, sets, nitems)
    end
 end
 
-local function write_sets_tbl(fname, sets, nitems)
+local function write_model_boundary(f, mesh)
+   -- write boundary conditions defined as a part of model
+   f:write('*BOUNDARY\n')
+   for _, bdisp in ipairs(mesh.bdisp) do
+      for kd = 1, 3 do
+         f:write(string.format('%10u,%d,%d,%12.5e\n',
+                               bdisp[1], kd, kd, bdisp[1+kd]))
+      end
+   end
+end
+
+-- write one table corresponding to sets
+local function write_sets_tbl_txt(fname, sets, nitems)
    local f = assert(io.open(fname, 'w'))
    for ki = 1, nitems do
       local ln = {}
@@ -77,16 +89,23 @@ local function write_sets_tbl(fname, sets, nitems)
    f:close()
 end
 
-local function write_model_boundary(f, mesh)
-   -- write boundary conditions defined as a part of model
-   f:write('*BOUNDARY\n')
-   for _, bdisp in ipairs(mesh.bdisp) do
-      for kd = 1, 3 do
-         f:write(string.format('%10u,%d,%d,%12.5e\n',
-                               bdisp[1], kd, kd, bdisp[1+kd]))
-      end
+-- write all tables
+local function write_sets_tbls_txt(mesh, fnames_tbl)
+   if fnames_tbl.vol_n then
+      write_sets_tbl_txt(fnames_tbl.vol_n, mesh.vol_n, #mesh.nodes)
+   end
+   if fnames_tbl.vol_el then
+      write_sets_tbl_txt(fnames_tbl.vol_el, mesh.vol_el, #mesh.elems)
+   end
+   -- boundary sets
+   if fnames_tbl.surf_n then
+      write_sets_tbl_txt(fnames_tbl.surf_n, mesh.surf_n, #mesh.nodes)
    end
 end
+
+local set_writers = {
+   txt = write_sets_tbls_txt,
+}
 
 local function write_mesh_ccx_tets(fname, mesh, fnames_tbl)
    local f = assert(io.open(fname, 'w'))
@@ -95,23 +114,17 @@ local function write_mesh_ccx_tets(fname, mesh, fnames_tbl)
    write_els(f, mesh)
    -- material sets
    write_sets(f, 'NSET', 'NMAT', mesh.vol_n, #mesh.nodes)
-   if fnames_tbl.vol_n then
-      write_sets_tbl(fnames_tbl.vol_n, mesh.vol_n, #mesh.nodes)
-   end
    write_sets(f, 'ELSET', 'EMAT', mesh.vol_el, #mesh.elems)
-   if fnames_tbl.vol_el then
-      write_sets_tbl(fnames_tbl.vol_el, mesh.vol_el, #mesh.elems)
-   end
    -- boundary sets
    write_sets(f, 'NSET', 'NBOU', mesh.surf_n, #mesh.nodes)
-   if fnames_tbl.surf_n then
-      write_sets_tbl(fnames_tbl.surf_n, mesh.surf_n, #mesh.nodes)
-   end
 
    -- boundary conditions
    if mesh.bdisp then
       write_model_boundary(f, mesh)
    end
+
+   -- write tables
+   set_writers[fnames_tbl.fmt](mesh, fnames_tbl)
 
    f:close()
 end

@@ -284,7 +284,7 @@ function Exo2Class:define_nodesets(nsets, props)
       local list = {}
       -- process all nodes
       for kn = 1, self.dims.num_nodes do
-         if nset[kn] then
+         if nset[kn] and nset[kn] ~= 0 then
             table.insert(list, kn)
          end
       end

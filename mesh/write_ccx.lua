@@ -75,6 +75,7 @@ local function write_model_boundary(f, mesh)
    end
 end
 
+-- ==== TEXT FORMAT ====
 -- write one table corresponding to sets
 local function write_sets_tbl_txt(fname, sets, nitems)
    local f = assert(io.open(fname, 'w'))
@@ -103,8 +104,65 @@ local function write_sets_tbls_txt(mesh, fnames_tbl)
    end
 end
 
+-- ==== netCDF FORMAT ====
+local function write_sets_netCDF(mesh, fnames_tbl)
+   local NC = require('netCDF/writer')
+
+   -- prepare one table corresponding to sets
+   local function mk_sets_netCDF(def, vardata, sets, nitems, varprefix, dimname)
+      for ks, set in ipairs(sets) do
+         local varname = string.format('%s_%d', varprefix, ks)
+         local list = {}
+         for ki = 1, nitems do
+            table.insert(list, set[ki] and 1 or 0)
+         end
+         def.vars[varname] = {
+            type = NC.NC.INT,
+            dims = { dimname }
+         }
+         vardata[varname] = list
+      end
+   end
+
+   local def = {
+      dims = {
+         num_nodes = #mesh.nodes,
+         num_elem = #mesh.elems,
+      },
+      vars = {},
+      atts = {}
+   }
+   local vardata = {}
+
+   if fnames_tbl.surf_n then
+      mk_sets_netCDF(def, vardata, mesh.surf_n, #mesh.nodes,
+                     fnames_tbl.surf_n, 'num_nodes')
+   end
+
+   if fnames_tbl.vol_n then
+      mk_sets_netCDF(def, vardata, mesh.vol_n, #mesh.nodes,
+                     fnames_tbl.vol_n, 'num_nodes')
+   end
+
+   if fnames_tbl.vol_el then
+      mk_sets_netCDF(def, vardata, mesh.vol_el, #mesh.elems,
+                     fnames_tbl.vol_el, 'num_elem')
+   end
+
+   local f = NC.NCWriter()
+   f:create(fnames_tbl.filename, def)
+   for name, _ in pairs(def.vars) do
+      f:write_var(name, vardata[name])
+   end
+
+   f:close()
+end
+
+
+
 local set_writers = {
    txt = write_sets_tbls_txt,
+   netCDF = write_sets_netCDF,
 }
 
 local function write_mesh_ccx_tets(fname, mesh, fnames_tbl)

@@ -183,7 +183,7 @@ do
             -- include size of dim  id
             vars_def_len = vars_def_len + szi4
             local dimid = self.dim_list.xref[dim_name]
-            assert(dimid, 'Unknown dimension')
+            assert(dimid, 'Unknown dimension: ' .. dim_name)
             var.dimids[kdim] = dimid
             local locrec = dimid == self.dim_list.rec_dim
             if kdim == 1 then

@@ -12,9 +12,26 @@ R.make_sets(M)
 
 T.calc_boundary_disp(M, {0.,0.,2.e-3,0.,0.,0.}, {1,2,3,4,5,6})
 
-W.write_mesh_ccx_tets(arg[2], M,
-                      { vol_n = 'voln',
-                        surf_n = 'surfn',
-                        vol_el = 'volel',
-                        fmt = 'txt',
-                      })
+
+local fmt = 'netCDF'
+
+local set_out
+if fmt == 'txt' then
+   set_out = {
+      vol_n = 'voln',
+      surf_n = 'surfn',
+      vol_el = 'volel',
+      fmt = 'txt',
+   }
+elseif fmt == 'netCDF' then
+   set_out = {
+      vol_n = 'voln',
+      surf_n = 'surfn',
+      vol_el = 'volel',
+      fmt = 'netCDF',
+      filename = 'sets.nc',
+   }
+end
+
+W.write_mesh_ccx_tets(arg[2], M, set_out)
+

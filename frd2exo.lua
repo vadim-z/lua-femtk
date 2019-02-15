@@ -3,7 +3,7 @@ local frd_exo_map = require('FRD/frd_exo_map')
 
 local usage = [[
 
-Usage: lua5.3 [options] frd2exo.lua frd_file exo_file
+Usage: lua5.3 frd2exo.lua [options] frd_file exo_file
 
 Options:
 -f: use float (real*4) type instead of default

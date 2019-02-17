@@ -1,3 +1,5 @@
+local mesh_utils = require('mesh/utils')
+
 local function write_nodes(f, mesh)
    f:write('*NODE, NSET=Nall\n')
    for k = 1, #mesh.nodes do
@@ -6,42 +8,18 @@ local function write_nodes(f, mesh)
    end
 end
 
--- INVERT tets?
-local invert = true
-local map_c3d10, map_c3d4
-if invert then
-   -- map netgen nodes (lexicographical ordering) to CCX order
-   map_c3d10 = {
-      1, 2, 4, 3, 5, 9, 7, 6, 8, 10,
-   }
-   map_c3d4 = { 1, 2, 4, 3 }
-else
-   -- map netgen nodes (lexicographical ordering) to CCX order
-   map_c3d10 = {
-      1, 2, 3, 4, 5, 8, 6, 7, 9, 10,
-   }
-   map_c3d4 = { 1, 2, 3, 4 }
-end
-
 local function write_els(f, mesh)
    -- FIXME FIXME: determine order by the 1st element
    f:write(string.format('*ELEMENT, TYPE=C3D%d, ELSET=Eall\n',
-                         #mesh.elems[1].nodes))
+                         #mesh.elems[1]))
    for ke = 1, #mesh.elems do
-      local nodes = mesh.elems[ke].nodes
-      local map
-      if #nodes == 10 then
-         map = map_c3d10
-      elseif #nodes == 4 then
-         map = map_c3d4
-      else
-         error('Sorry, only 4/10-nodes tets are supported')
-      end
+      local nodes = mesh.elems[ke]
       local ln = {}
       table.insert(ln, string.format('%10u', ke))
       for kn = 1, #nodes do
-         table.insert(ln, string.format('%10u', nodes[map[kn]]))
+         table.insert(ln, string.format('%10u', nodes[kn]))
       end
+      -- FIXME: other types of elements
       if #nodes == 10 then
          -- write 1st line
          f:write(table.concat(ln, ',', 1, 7), ',\n')
@@ -166,7 +144,10 @@ local set_writers = {
    netCDF = write_sets_netCDF,
 }
 
-local function write_mesh_ccx_tets(fname, mesh, fnames_tbl)
+local function write_mesh_ccx(fname, mesh, fnames_tbl)
+   -- compress if needed
+   mesh_utils.compress_mesh(mesh)
+
    local f = assert(io.open(fname, 'w'))
    fnames_tbl = fnames_tbl or {}
    write_nodes(f, mesh)
@@ -189,5 +170,5 @@ local function write_mesh_ccx_tets(fname, mesh, fnames_tbl)
 end
 
 return {
-   write_mesh_ccx_tets = write_mesh_ccx_tets,
+   write_mesh_ccx = write_mesh_ccx,
 }

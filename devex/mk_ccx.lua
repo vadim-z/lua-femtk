@@ -1,5 +1,3 @@
--- MinGW: notice https://gist.github.com/vadim-z/c6a232c5654793017e538bd723de1168
--- require('2de')
 local R = require('mesh/read_mesh_netgen')
 local W = require('mesh/write_ccx')
 local T = require('mesh/ccx_tools')
@@ -8,8 +6,7 @@ if #arg < 2 then
    error('Not enough arguments!')
 end
 
-local M = R.read_mesh_netgen(arg[1])
-R.make_sets(M)
+local M = R.read_mesh_netgen_tets(arg[1])
 
 T.calc_boundary_disp(M, {0.,0.,2.e-3,0.,0.,0.}, {1,2,3,4,5,6})
 
@@ -34,5 +31,5 @@ elseif fmt == 'netCDF' then
    }
 end
 
-W.write_mesh_ccx_tets(arg[2], M, set_out)
+W.write_mesh_ccx(arg[2], M, set_out)
 

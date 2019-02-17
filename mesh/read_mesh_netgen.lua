@@ -1,3 +1,5 @@
+-- Reading Netgen mesh file (neutral format)
+
 local function getline(f)
    local s
    repeat
@@ -29,61 +31,98 @@ local function read_nodes(f)
    return nodes
 end
 
-local function read_elems(f)
+-- INVERT tets?
+local invert = true
+local map_t10, map_t4
+if invert then
+   -- map netgen nodes (lexicographical ordering) to CCX order
+   map_t10 = {
+      1, 2, 4, 3, 5, 9, 7, 6, 8, 10,
+   }
+   map_t4 = { 1, 2, 4, 3 }
+else
+   -- map netgen nodes (lexicographical ordering) to CCX order
+   map_t10 = {
+      1, 2, 3, 4, 5, 8, 6, 7, 9, 10,
+   }
+   map_t4 = { 1, 2, 3, 4 }
+end
+
+local function read_vol_elems(mesh, f)
    local nelems = gettoks(f)
    local elems = {}
-   for _ = 1, nelems do
-      local el = {gettoks(f)}
-      local mark = el[1]
-      table.remove(el, 1)
-      table.insert(elems, { mark = mark, nodes = el } )
-   end
-   return elems
-end
+   local vol_el, vol_n = {}, {}
+   for ke = 1, nelems do
+      local el_ng = {gettoks(f)}
+      local mark = el_ng[1]
+      local el = {}
+      local map
+      el.id = mark
 
-local function read_mesh_netgen(fname)
-   -- local t = TT.tic('Reading Netgen mesh file (neutral format)')
-   local f = assert(io.open(fname, 'r'))
-   local nodes = read_nodes(f)
-   local elems = read_elems(f)
-   local selems = read_elems(f)
-   f:close()
-   -- TT.toc(t)
-   return { nodes = nodes, elems = elems, selems = selems }
-end
+      -- mark volume element set
+      vol_el[mark] = vol_el[mark] or {}
+      vol_el[mark][ke] = true
 
-local function make_sets(mesh)
-   -- Generate element and node sets corresponding to
-   -- material and boundary markers
-   local vol_el, vol_n, surf_n = {}, {}, {}
+      -- mark nodes in volume node set
+      vol_n[mark] = vol_n[mark] or {}
 
-   -- enumerate volume elements
-   for ke = 1, #mesh.elems do
-      local m = mesh.elems[ke].mark
-      vol_el[m] = vol_el[m] or {}
-      vol_el[m][ke] = true
-      vol_n[m] = vol_n[m] or {}
-      local nodes = mesh.elems[ke].nodes
-      for kn = 1, #nodes do
-         vol_n[m][nodes[kn]] = true
+      if #el_ng == 11 then
+         -- 2nd order tet
+         el.type = 'TETRA10'
+         map = map_t10
+      elseif #el_ng == 5 then
+         el.type = 'TETRA4'
+         map = map_t4
+      else
+         error('Sorry, only 4/10-nodes tets are supported')
       end
+      -- fill mapped nodes
+      for kn, n_map in ipairs(map) do
+         local node = el_ng[1+n_map]
+         el[kn] = node
+         vol_n[mark][node] = true
+      end
+
+      table.insert(elems, el)
    end
 
-   -- enumerate surface elements
-   for ke = 1, #mesh.selems do
-      local m = mesh.selems[ke].mark
-      surf_n[m] = surf_n[m] or {}
-      local nodes = mesh.selems[ke].nodes
-      for kn = 1, #nodes do
-         surf_n[m][nodes[kn]] = true
-      end
-   end
-   mesh.vol_el = vol_el
+   mesh.elems = elems
    mesh.vol_n = vol_n
+   mesh.vol_el = vol_el
+end
+
+local function read_surf_elems(mesh, f)
+   local nelems = gettoks(f)
+   local surf_n = {}
+   for _ = 1, nelems do
+      local el_ng = {gettoks(f)}
+      local mark = el_ng[1]
+      -- mark nodes in surface node set
+      surf_n[mark] = surf_n[mark] or {}
+
+      for kn = 1, #el_ng - 1 do
+         local node = el_ng[1+kn]
+         surf_n[mark][node] = true
+      end
+   end
+
    mesh.surf_n = surf_n
 end
 
+local function read_mesh_netgen_tets(fname)
+   local f = assert(io.open(fname, 'r'))
+   local mesh = {}
+   mesh.nodes = read_nodes(f)
+   mesh.nnodes = #mesh.nodes
+   mesh.node_map = false
+   read_vol_elems(mesh, f)
+   mesh.nelems = #mesh.elems
+   mesh.elem_map = false
+   read_surf_elems(mesh, f)
+   f:close()
+   return mesh
+end
+
 return {
-   read_mesh_netgen = read_mesh_netgen,
-   make_sets = make_sets,
+   read_mesh_netgen_tets = read_mesh_netgen_tets,
 }

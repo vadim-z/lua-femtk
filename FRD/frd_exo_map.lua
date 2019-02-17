@@ -175,33 +175,33 @@ end
 
 do
    -- FRD elements definitions in EXODUS II terms
-   -- according to CGX and EXODUS II guides, the order of nodes is the same
+   -- according to CCX/CGX and EXODUS II guides, the order of nodes is the same
    -- no mapping required
    local eldefs = {
       -- 8-nodes hex
-      { nodes = 8, name = 'HEX' },
+      { nodes = 8, name = 'HEX8' },
       -- 6-nodes wedge
-      { nodes = 6, name = 'WEDGE' },
+      { nodes = 6, name = 'WEDGE6' },
       -- 4-nodes tetra
-      { nodes = 4, name = 'TETRA' },
+      { nodes = 4, name = 'TETRA4' },
       -- 20-nodes hex
-      { nodes = 20, name = 'HEX' },
+      { nodes = 20, name = 'HEX20' },
       -- 15-nodes wedge
-      { nodes = 15, name = 'WEDGE' },
+      { nodes = 15, name = 'WEDGE15' },
       -- 10-nodes tetra
-      { nodes = 10, name = 'TETRA' },
+      { nodes = 10, name = 'TETRA10' },
       -- 3-nodes triangle
-      { nodes = 3, name = 'TRIANGLE' },
+      { nodes = 3, name = 'TRIANGLE3' },
       -- 6-nodes triangle
-      { nodes = 6, name = 'TRIANGLE' },
+      { nodes = 6, name = 'TRIANGLE6' },
       -- 4-nodes quad
-      { nodes = 4, name = 'QUAD' },
+      { nodes = 4, name = 'QUAD4' },
       -- 8-nodes quad
-      { nodes = 8, name = 'QUAD' },
+      { nodes = 8, name = 'QUAD8' },
       -- 2-node beam
-      { nodes = 2, name = 'BEAM' },
+      { nodes = 2, name = 'BEAM2' },
       -- 3-node beam
-      { nodes = 2, name = 'BEAM' },
+      { nodes = 3, name = 'BEAM3' },
    }
 
    function Exo2_writer_class:rec3C(rec)

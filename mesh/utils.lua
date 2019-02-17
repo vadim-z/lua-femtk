@@ -1,5 +1,8 @@
 -- various mesh utils
 
+-- FIXME (here and in readers):
+-- determine and use maximal values of volume and surface markers
+
 -- convert boolean set to map and its inverse
 local function bool_to_map(bset, nbset)
    local map, imap = {}, {}
@@ -71,7 +74,7 @@ local function compress_mesh(mesh)
 
    if mesh.elem_map then
       -- build elem map
-      local map, imap = bool_to_map(mesh.elem_map, mesh.nelems)
+      local map, _ = bool_to_map(mesh.elem_map, mesh.nelems)
       -- compress elements
       mesh.elems = compress_var(map, mesh.elems)
       -- compress element sets
@@ -84,6 +87,44 @@ local function compress_mesh(mesh)
    end
 end
 
+-- convert nodes array to EXODUS-II large format three arrays
+local function nodes_to_ex2(nodes)
+   local nodes_ex2 = {{}, {}, {}}
+
+   for kn, node in ipairs(nodes) do
+      for kc, coord in ipairs(node) do
+         nodes_ex2[kc][kn] = coord
+      end
+   end
+
+   return nodes_ex2
+end
+
+-- convert boolean sets to raw node sets in EXODUS II format
+local function exo2_nsets(mesh, ids)
+   local sets = {}
+
+   local function add_sets(n_sets, id, code)
+      for ks, set in ipairs(n_sets) do
+         local rset, _ = bool_to_map(set, mesh.nnodes)
+         rset.id =  id + ks
+         rset.SURF = code
+         rset.VOL = 1 - code
+         table.insert(sets, rset)
+      end
+   end
+
+   -- first, add surface sets
+   add_sets(mesh.surf_n, ids.surfn, 1)
+   -- then, add volume sets
+   -- first, add surface sets
+   add_sets(mesh.vol_n, ids.voln, 0)
+
+   return sets
+end
+
 return {
    compress_mesh = compress_mesh,
+   nodes_to_ex2 = nodes_to_ex2,
+   exo2_nsets = exo2_nsets,
 }

@@ -156,7 +156,7 @@ local function save_node_sets(self)
 
    -- first, add surface sets
    add_sets('n_surf_n', 'surfn', 1)
-   -- first, add volume sets
+   -- then, add volume sets
    add_sets('n_vol_n', 'voln', 0)
 
    self.f:define_nodesets(node_sets, prop_names)

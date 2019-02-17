@@ -261,7 +261,7 @@ function Exo2Class:define_els(els, mats)
 end
 
 -- define node sets and related variables
-function Exo2Class:define_nodesets(nsets, props)
+function Exo2Class:define_nodesets(nsets, props, raw)
    assert(not self.NCfile, 'Unexpected node sets definition')
    if #nsets == 0 then
       -- nothing to add
@@ -281,11 +281,17 @@ function Exo2Class:define_nodesets(nsets, props)
 
    -- iterate over node sets
    for kset, nset in ipairs(nsets) do
-      local list = {}
-      -- process all nodes
-      for kn = 1, self.dims.num_nodes do
-         if nset[kn] and nset[kn] ~= 0 then
-            table.insert(list, kn)
+      local list
+      
+      if raw then
+         list = nset
+      else
+         list = {}
+         -- process all nodes
+         for kn = 1, self.dims.num_nodes do
+            if nset[kn] and nset[kn] ~= 0 then
+               table.insert(list, kn)
+            end
          end
       end
       -- create node sets dimensions and variables

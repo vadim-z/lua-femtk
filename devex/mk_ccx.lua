@@ -1,3 +1,4 @@
+-- MinGW: notice https://gist.github.com/vadim-z/c6a232c5654793017e538bd723de1168
 -- require('2de')
 local R = require('mesh/read_mesh_netgen')
 local W = require('mesh/write_ccx')

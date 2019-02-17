@@ -1,5 +1,6 @@
 local R = require('FRD/read_frd')
 
+-- https://gist.github.com/stuby/5445834
 local function rPrint(s, l, i) -- recursive Print (structure, limit, indent)
 	l = (l) or 100; i = i or "";	-- default item limit, indent string
 	if (l<1) then print "ERROR: Item limit reached."; return l-1 end;

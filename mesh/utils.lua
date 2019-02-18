@@ -1,4 +1,5 @@
 -- various mesh utils
+local exo2s = require('netCDF/exo2s')
 
 -- convert boolean set to map and its inverse
 local function bool_to_map(bset, nbset)
@@ -86,16 +87,16 @@ local function compress_mesh(mesh)
 end
 
 -- convert nodes array to EXODUS-II large format three arrays
-local function nodes_to_ex2(nodes)
-   local nodes_ex2 = {{}, {}, {}}
+local function nodes_to_exo2(nodes)
+   local nodes_exo2 = {{}, {}, {}}
 
    for kn, node in ipairs(nodes) do
       for kc, coord in ipairs(node) do
-         nodes_ex2[kc][kn] = coord
+         nodes_exo2[kc][kn] = coord
       end
    end
 
-   return nodes_ex2
+   return nodes_exo2
 end
 
 -- convert boolean sets to raw node sets in EXODUS II format
@@ -121,8 +122,21 @@ local function exo2_nsets(mesh, ids)
    return sets
 end
 
+local function write_mesh_exo2(mesh, fname, title, ids)
+   compress_mesh(mesh)
+   local f = exo2s.Exo2File()
+   f:init(fname)
+   f:define_title(title)
+   f:define_nodes(nodes_to_exo2(mesh.nodes))
+   f:define_els(mesh.elems)
+   f:define_nodesets(exo2_nsets(mesh, ids),
+                     { 'SURF', 'VOL' }, true )
+   f:close()
+end
+
 return {
    compress_mesh = compress_mesh,
-   nodes_to_ex2 = nodes_to_ex2,
+   nodes_to_exo2 = nodes_to_exo2,
    exo2_nsets = exo2_nsets,
+   write_mesh_exo2 = write_mesh_exo2,
 }

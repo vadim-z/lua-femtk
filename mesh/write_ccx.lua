@@ -8,16 +8,42 @@ local function write_nodes(f, mesh)
    end
 end
 
+local elemtable = {
+   -- 1st order
+   TETRA4 = { map = false }, -- C3D4
+   HEX8 = { map = false }, -- C3D8
+   WEDGE6 = { map = false }, -- C3D6
+   -- 2nd order
+   TETRA10 = { map = false }, -- C3D10
+   HEX20 = { map = {
+                1, 2, 3, 4, 5, 6, 7, 8,
+                9, 10, 11, 12, 17, 18, 19, 20, 13, 14, 15, 16, }
+           }, -- C3D20
+   WEDGE15 = { map = {
+                  1, 2, 3, 4, 5, 6,
+                  7, 8, 9, 13, 14, 15, 10, 11, 12, }
+             }, -- C3D15
+}
+
 local function write_els(f, mesh)
    -- FIXME FIXME: determine order by the 1st element
    f:write(string.format('*ELEMENT, TYPE=C3D%d, ELSET=Eall\n',
                          #mesh.elems[1]))
-   for ke = 1, #mesh.elems do
+   for ke, elem in ipairs(mesh.elems) do
+      local elty = assert(elemtable[elem.type],
+                          'Failed to map eltype to CCX: ' .. elem.type)
       local nodes = mesh.elems[ke]
       local ln = {}
       table.insert(ln, string.format('%10u', ke))
       for kn = 1, #nodes do
-         table.insert(ln, string.format('%10u', nodes[kn]))
+         local ix
+         if not elty.map then
+            ix = kn
+         else
+            -- map node index
+            ix = elty.map[kn]
+         end
+         table.insert(ln, string.format('%10u', nodes[ix]))
       end
 
       -- write lines with continuations
@@ -161,7 +187,6 @@ local function write_mesh_ccx(fname, mesh, fnames_tbl)
    mesh_utils.compress_mesh(mesh)
 
    local f = assert(io.open(fname, 'w'))
-   fnames_tbl = fnames_tbl or {}
    write_nodes(f, mesh)
    write_els(f, mesh)
    -- material sets
@@ -176,7 +201,9 @@ local function write_mesh_ccx(fname, mesh, fnames_tbl)
    end
 
    -- write tables
-   set_writers[fnames_tbl.fmt](mesh, fnames_tbl)
+   if fnames_tbl then
+      set_writers[fnames_tbl.fmt](mesh, fnames_tbl)
+   end
 
    f:close()
 end

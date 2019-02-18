@@ -70,9 +70,9 @@ local elemtable = {
     type = 'TETRA10',
     map = {1, 2, 3, 4, 5, 6, 7, 8, 10, 9},
    }, -- 10n tet
-   {12, 27, 3}, -- 27n hex (unsupported in EXODUS II model)
-   {13, 18, 3}, -- 18n prism (unsupported in EXODUS II model)
-   {14, 14, 3}, -- 14n pyr (unsupported in EXODUS II model)
+   {12, 27, 3}, -- 27n hex (unknown node ordering in EXODUS II model)
+   {13, 18, 3}, -- 18n prism (unknown node ordering in EXODUS II model)
+   {14, 14, 3}, -- 14n pyr (unknown node ordering in EXODUS II model)
    -- misc
    {15, 1, 0}, -- point
    -- 2nd serendipity
@@ -154,9 +154,9 @@ local function read_elems(M, f)
          for kn = 1, nnodes do
             local node
             if not elty.map then
-               -- map node index
                node = ls[nix+kn]
             else
+               -- map node index
                node = ls[nix + elty.map[kn] ]
             end
             el[kn] = node

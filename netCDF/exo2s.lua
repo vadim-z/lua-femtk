@@ -282,7 +282,7 @@ function Exo2Class:define_nodesets(nsets, props, raw)
    -- iterate over node sets
    for kset, nset in ipairs(nsets) do
       local list
-      
+
       if raw then
          list = nset
       else

@@ -96,8 +96,20 @@ local function read_elems(M, f)
    local nelems = gettoks(f)
    local elems = {}
    local elem_map = {}
-   local vol_el, vol_n = {}, {}
-   local surf_n = {}
+   local vol_el = { imap = {} }
+   local vol_n = { imap = {} }
+   local surf_n = { imap = {} }
+
+   local function marked_nset(nsets, mark)
+      -- exists?
+      local n_set = nsets.imap[mark]
+      if not n_set then
+         table.insert(nsets, { id = mark } )
+         n_set = #nsets
+         nsets.imap[mark] = n_set
+      end
+      return nsets[n_set]
+   end
 
    for _ = 1, nelems do
       local ls = {gettoks(f)}
@@ -114,7 +126,7 @@ local function read_elems(M, f)
       local elty = elemtable[t]
       assert(elty, 'Unknown element type ' .. t)
 
-      -- FIXME: use geometric ID for unphysical elements (?)
+      -- use geometric ID for unphysical elements (?)
       if phy == 0 then
          phy = geom
       end
@@ -130,11 +142,11 @@ local function read_elems(M, f)
                           'Element type unsupported in the model ' .. t)
 
          -- mark volume element set
-         vol_el[phy] = vol_el[phy] or {}
-         vol_el[phy][i] = true
+         local nset = marked_nset(vol_el, phy)
+         nset[i] = true
 
          -- mark nodes in volume node set
-         vol_n[phy] = vol_n[phy] or {}
+         nset = marked_nset(vol_n, phy)
 
          -- proceed with nodes
          local nnodes = elty[2]
@@ -148,21 +160,21 @@ local function read_elems(M, f)
                node = ls[nix + elty.map[kn] ]
             end
             el[kn] = node
-            vol_n[phy][node] = true
+            nset[node] = true
             M.node_map[node] = true
          end
       elseif elty[3] == 2 then
          -- 2D element, add nodes to set
 
          -- mark nodes in surface node set
-         surf_n[phy] = surf_n[phy] or {}
+         local nset = marked_nset(surf_n, phy)
 
          -- proceed with nodes
          local nnodes = elty[2]
 
          for kn = 1, nnodes do
             local node = ls[nix+kn]
-            surf_n[phy][node] = true
+            nset[node] = true
             M.node_map[node] = true
          end
       end

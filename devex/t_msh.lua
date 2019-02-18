@@ -14,6 +14,6 @@ f:init(arg[2])
 f:define_title('converted')
 f:define_nodes(U.nodes_to_ex2(M.nodes))
 f:define_els(M.elems)
-f:define_nodesets(U.exo2_nsets(M, { surfn = 100, voln = 200 }),
+f:define_nodesets(U.exo2_nsets(M, { surfn = 100, voln = 300 }),
                   { 'SURF', 'VOL' }, true )
 f:close()

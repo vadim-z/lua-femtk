@@ -1,8 +1,5 @@
 -- various mesh utils
 
--- FIXME (here and in readers):
--- determine and use maximal values of volume and surface markers
-
 -- convert boolean set to map and its inverse
 local function bool_to_map(bset, nbset)
    local map, imap = {}, {}
@@ -25,6 +22,7 @@ local function compress_var(map, var)
    for k, km in ipairs(map) do
       var_comp[k] = var[km]
    end
+   var_comp.id = var.id
 
    return var_comp
 end
@@ -105,9 +103,9 @@ local function exo2_nsets(mesh, ids)
    local sets = {}
 
    local function add_sets(n_sets, id, code)
-      for ks, set in ipairs(n_sets) do
+      for _, set in ipairs(n_sets) do
          local rset, _ = bool_to_map(set, mesh.nnodes)
-         rset.id =  id + ks
+         rset.id =  id + set.id
          rset.SURF = code
          rset.VOL = 1 - code
          table.insert(sets, rset)

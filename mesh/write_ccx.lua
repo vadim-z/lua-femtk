@@ -57,10 +57,17 @@ end
 -- write one table corresponding to sets
 local function write_sets_tbl_txt(fname, sets, nitems)
    local f = assert(io.open(fname, 'w'))
+   -- banner
+   local ln = { '%' }
+   for _,  set in ipairs(sets) do
+      table.insert(ln, string.format('%d', set.id))
+   end
+   f:write(table.concat(ln, ' '), '\n')
+
    for ki = 1, nitems do
-      local ln = {}
-      for ks = 1, #sets do
-         local v = sets[ks][ki] and 1 or 0
+      ln = {}
+      for _, set in ipairs(sets) do
+         local v = set[ki] and 1 or 0
          table.insert(ln, string.format('%1d', v))
       end
       f:write(table.concat(ln, ' '), '\n')
@@ -86,22 +93,6 @@ end
 local function write_sets_netCDF(mesh, fnames_tbl)
    local NC = require('netCDF/writer')
 
-   -- prepare one table corresponding to sets
-   local function mk_sets_netCDF(def, vardata, sets, nitems, varprefix, dimname)
-      for ks, set in ipairs(sets) do
-         local varname = string.format('%s_%d', varprefix, ks)
-         local list = {}
-         for ki = 1, nitems do
-            table.insert(list, set[ki] and 1 or 0)
-         end
-         def.vars[varname] = {
-            type = NC.NC.BYTE,
-            dims = { dimname }
-         }
-         vardata[varname] = list
-      end
-   end
-
    local def = {
       dims = {
          num_nodes = #mesh.nodes,
@@ -112,23 +103,39 @@ local function write_sets_netCDF(mesh, fnames_tbl)
    }
    local vardata = {}
 
-   if fnames_tbl.surf_n then
-      mk_sets_netCDF(def, vardata, mesh.surf_n, #mesh.nodes,
-                     fnames_tbl.surf_n, 'num_nodes')
-      def.atts.n_surf_n = { #mesh.surf_n, type = NC.NC.INT }
+   -- prepare one table corresponding to sets
+   local function mk_sets_netCDF(sets, nitems, varprefix, dimname)
+      if varprefix then
+         local ids = {}
+         -- the map
+         for ks, set in ipairs(sets) do
+            local varname = string.format('%s_%d', varprefix, ks)
+            local list = {}
+            for ki = 1, nitems do
+               table.insert(list, set[ki] and 1 or 0)
+            end
+            def.vars[varname] = {
+               type = NC.NC.BYTE,
+               dims = { dimname }
+            }
+            vardata[varname] = list
+            ids[ks] = set.id
+         end
+         -- dimension and ids
+         local sets_dim_name = 'num_' .. varprefix
+         def.dims[sets_dim_name] = #sets
+         local ids_var_name = 'id_' .. varprefix
+         def.vars[ids_var_name] = {
+            type = NC.NC.INT,
+            dims = { sets_dim_name },
+         }
+         vardata[ids_var_name] = ids
+      end
    end
 
-   if fnames_tbl.vol_n then
-      mk_sets_netCDF(def, vardata, mesh.vol_n, #mesh.nodes,
-                     fnames_tbl.vol_n, 'num_nodes')
-      def.atts.n_vol_n = { #mesh.vol_n, type = NC.NC.INT }
-   end
-
-   if fnames_tbl.vol_el then
-      mk_sets_netCDF(def, vardata, mesh.vol_el, #mesh.elems,
-                     fnames_tbl.vol_el, 'num_elem')
-      def.atts.n_vol_el = { #mesh.vol_el, type = NC.NC.INT }
-   end
+   mk_sets_netCDF(mesh.surf_n, #mesh.nodes, fnames_tbl.surf_n, 'num_nodes')
+   mk_sets_netCDF(mesh.vol_n, #mesh.nodes, fnames_tbl.vol_n, 'num_nodes')
+   mk_sets_netCDF(mesh.vol_el, #mesh.elems, fnames_tbl.vol_el, 'num_elem')
 
    local f = NC.NCWriter()
    f:create(fnames_tbl.filename, def)

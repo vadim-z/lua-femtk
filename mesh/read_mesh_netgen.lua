@@ -31,6 +31,17 @@ local function read_nodes(f)
    return nodes
 end
 
+local function marked_nset(nsets, mark)
+   -- exists?
+   local n_set = nsets.imap[mark]
+   if not n_set then
+      table.insert(nsets, { id = mark } )
+      n_set = #nsets
+      nsets.imap[mark] = n_set
+   end
+   return nsets[n_set]
+end
+
 -- INVERT tets?
 local invert = true
 local map_t10, map_t4
@@ -51,7 +62,9 @@ end
 local function read_vol_elems(mesh, f)
    local nelems = gettoks(f)
    local elems = {}
-   local vol_el, vol_n = {}, {}
+   local vol_el = { imap = {} }
+   local vol_n = { imap = {} }
+
    for ke = 1, nelems do
       local el_ng = {gettoks(f)}
       local mark = el_ng[1]
@@ -60,11 +73,11 @@ local function read_vol_elems(mesh, f)
       el.id = mark
 
       -- mark volume element set
-      vol_el[mark] = vol_el[mark] or {}
-      vol_el[mark][ke] = true
+      local nset = marked_nset(vol_el, mark)
+      nset[ke] = true
 
       -- mark nodes in volume node set
-      vol_n[mark] = vol_n[mark] or {}
+      nset = marked_nset(vol_n, mark)
 
       if #el_ng == 11 then
          -- 2nd order tet
@@ -80,7 +93,7 @@ local function read_vol_elems(mesh, f)
       for kn, n_map in ipairs(map) do
          local node = el_ng[1+n_map]
          el[kn] = node
-         vol_n[mark][node] = true
+         nset[node] = true
       end
 
       table.insert(elems, el)
@@ -93,16 +106,18 @@ end
 
 local function read_surf_elems(mesh, f)
    local nelems = gettoks(f)
-   local surf_n = {}
+   local surf_n = { imap = {} }
+
    for _ = 1, nelems do
       local el_ng = {gettoks(f)}
       local mark = el_ng[1]
+
       -- mark nodes in surface node set
-      surf_n[mark] = surf_n[mark] or {}
+      local nset = marked_nset(surf_n, mark)
 
       for kn = 1, #el_ng - 1 do
          local node = el_ng[1+kn]
-         surf_n[mark][node] = true
+         nset[node] = true
       end
    end
 

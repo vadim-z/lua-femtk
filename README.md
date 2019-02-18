@@ -19,8 +19,8 @@ A tool to convert .frd files produced by CalculiX CrunchiX (ccx) to
  EXODUS II format.
 
 ## mesh
-Modules to read Netgen mesh, convert it to CalculiX/ABAQUS input files
- and other tools.
+Modules to read Netgen or gmsh mesh, convert it to CalculiX/ABAQUS input
+ files  and other tools.
 
 ## devex
 Various tests and tools.

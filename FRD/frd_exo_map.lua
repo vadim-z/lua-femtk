@@ -139,14 +139,15 @@ local function save_node_sets(self)
    local node_sets = {}
    local prop_names = { 'SURF', 'VOL' }
 
-   local function add_sets(att_name, prefix, code)
+   local function add_sets(prefix, code)
       local id = self.sets[prefix]
       if id then
-         local nset = self.set_file.att_list.map[att_name][1]
-         for ks = 1, nset do
+         local len_set = self.set_file.dim_list.map['num_' .. prefix].size
+         for ks = 1, len_set do
             local set_name = string.format('%s_%d', prefix, ks)
             local set = self.set_vars[set_name]
-            set.id = id + ks
+
+            set.id = id + self.set_vars['id_' .. prefix][ks]
             set.SURF = code
             set.VOL = 1 - code
             table.insert(node_sets, set)
@@ -155,9 +156,9 @@ local function save_node_sets(self)
    end
 
    -- first, add surface sets
-   add_sets('n_surf_n', 'surfn', 1)
+   add_sets('surfn', 1)
    -- then, add volume sets
-   add_sets('n_vol_n', 'voln', 0)
+   add_sets('voln', 0)
 
    self.f:define_nodesets(node_sets, prop_names)
 end

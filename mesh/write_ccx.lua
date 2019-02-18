@@ -19,23 +19,28 @@ local function write_els(f, mesh)
       for kn = 1, #nodes do
          table.insert(ln, string.format('%10u', nodes[kn]))
       end
-      -- FIXME: other types of elements
-      if #nodes == 10 then
-         -- write 1st line
-         f:write(table.concat(ln, ',', 1, 7), ',\n')
-         -- write cont line
-         f:write(table.concat(ln, ',', 8, 11), '\n')
-      elseif #nodes == 4 then
-         f:write(table.concat(ln, ',', 1, 5), ',\n')
+
+      -- write lines with continuations
+      local ofs, len = 0, 1+#nodes
+      while len > 0 do
+         local linelen = math.min(len, 7)
+         f:write(table.concat(ln, ',', ofs+1, ofs+linelen))
+         len = len - linelen
+         ofs = ofs + linelen
+         if len > 0 then
+            f:write(',\n') -- a continuation line will follow
+         else
+            f:write('\n')
+         end
       end
    end
 end
 
 local function write_sets(f, kind, prefix, sets, nitems)
-   for ks = 1, #sets do
-      f:write(string.format('*%s, %s=%s%d\n', kind, kind, prefix, ks))
+   for _, set in ipairs(sets) do
+      f:write(string.format('*%s, %s=%s%d\n', kind, kind, prefix, set.id))
       for ki = 1, nitems do
-         if sets[ks][ki] then
+         if set[ki] then
             f:write(string.format('%10u,\n', ki))
          end
       end

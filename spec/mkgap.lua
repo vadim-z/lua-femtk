@@ -48,6 +48,7 @@ local function make_twins(mesh, twin_map, v1, v2, surf1, surf2)
    end
 
    -- Phase III: add twins to a new surface if required
+   -- FIXME: other surfaces
    for k, ktwin in pairs(twin_map) do
       if surf1 then
          mesh.surf_n[surf1][k] = true
@@ -68,7 +69,7 @@ local function dilate_nodes_xy(mesh, vlist, fac)
    for _, kvol in ipairs(vlist) do
       -- iterate over all nodes in volume node set
       for node, _ in pairs(mesh.vol_n[kvol]) do
-         if not marked[node] then
+         if node ~= 'id' and not marked[node] then
             -- do not dilate twice
             marked[node] = true
 

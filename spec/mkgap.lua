@@ -1,14 +1,29 @@
 --local reader = require('mesh/read_msh2')
 --local utils = require('mesh/utils')
 
+-- find node/el sets by ids
+-- return list corresponding to ids
+local function sets_by_ids(sets, ids)
+   local list = {}
+   for _, id in ipairs(ids) do
+      for kset, set in ipairs(sets) do
+         if set.id == id then
+            list[#list+1] = kset
+         end
+      end
+   end
+
+   return list
+end
+
 -- identify nodes belonging to both domains
 -- make twins of them
-local function make_twins(mesh, twin_map, v1, v2, surf1, surf2)
+local function make_twins(mesh, twin_map, vn1, vn2, ve2)
 
    -- Phase I: build twin map, add twin nodes, replace volume node set refs
    local kend = mesh.nnodes
    for k = 1, mesh.nnodes do
-      if mesh.vol_n[v1][k] and mesh.vol_n[v2][k] then
+      if mesh.vol_n[vn1][k] and mesh.vol_n[vn2][k] then
          local knew = twin_map[k]
          if not knew then
             -- make new twin of this node
@@ -26,8 +41,8 @@ local function make_twins(mesh, twin_map, v1, v2, surf1, surf2)
          end
 
          -- change volume node set references
-         mesh.vol_n[v2][k] = nil
-         mesh.vol_n[v2][knew] = true
+         mesh.vol_n[vn2][k] = nil
+         mesh.vol_n[vn2][knew] = true
       end
    end
    -- update number of nodes
@@ -35,7 +50,7 @@ local function make_twins(mesh, twin_map, v1, v2, surf1, surf2)
 
    -- Phase II: fix elements
    for k = 1, mesh.nelems do
-      if mesh.vol_el[v2][k] then
+      if mesh.vol_el[ve2][k] then
          local el = mesh.elems[k]
          -- replace all nodes in the twin list by twins
          for kn, node in ipairs(el) do
@@ -47,6 +62,7 @@ local function make_twins(mesh, twin_map, v1, v2, surf1, surf2)
       end
    end
 
+--[[
    -- Phase III: add twins to a new surface if required
    -- FIXME: other surfaces
    for k, ktwin in pairs(twin_map) do
@@ -57,7 +73,7 @@ local function make_twins(mesh, twin_map, v1, v2, surf1, surf2)
          mesh.surf_n[surf2][ktwin] = true
       end
    end
-
+]]
    return twin_map
 
 end
@@ -92,7 +108,8 @@ local function twin_lists(twin_map, n)
    return tw1, tw2
 end
 
-local function mkgap(mesh, list1, list2, fac)
+local function mkgap(mesh, id_list1, id_list2, fac)
+--[[
    local surf1, surf2 = nil, nil
 
    if list1.surf_id then
@@ -106,14 +123,22 @@ local function mkgap(mesh, list1, list2, fac)
       -- surface node sets index
       surf2 = #mesh.surf_n
    end
+]]
+
+   -- volume node sets
+   local vn1 = sets_by_ids(mesh.vol_n, id_list1)
+   local vn2 = sets_by_ids(mesh.vol_n, id_list2)
+   -- volume element sets
+   local ve1 = sets_by_ids(mesh.vol_el, id_list1)
+   local ve2 = sets_by_ids(mesh.vol_el, id_list2)
 
    local twin_map = {}
 
-   for k = 1, #list1 do
-      make_twins(mesh, twin_map, list1[k], list2[k], surf1, surf2)
+   for k = 1, #id_list1 do
+      make_twins(mesh, twin_map, vn1[k], vn2[k], ve2[k])
    end
 
-   dilate_nodes_xy(mesh, list2, fac)
+   dilate_nodes_xy(mesh, vn2, fac)
 
    mesh.twin1, mesh.twin2 = twin_lists(twin_map, mesh.nnodes)
 end

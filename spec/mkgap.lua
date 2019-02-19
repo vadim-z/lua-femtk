@@ -1,6 +1,3 @@
---local reader = require('mesh/read_msh2')
---local utils = require('mesh/utils')
-
 -- find node/el sets by ids
 -- return list corresponding to ids
 local function sets_by_ids(sets, ids)
@@ -29,7 +26,41 @@ local function add_twin_map(mesh, k_last, twin_map, vn1, vn2)
    return k_last
 end
 
-local function update_vols(mesh, twin_map, vn2, ve2)
+-- calculate set of points which belong to domain 1 or 2 (any volume inside)
+-- but not their interface
+local function domain_set(mesh, vns, twin_map)
+   local dset = {}
+   for _, kvol in ipairs(vns) do
+      for node, _ in pairs(mesh.vol_n[kvol]) do
+         if node ~= 'id' then
+            dset[node] = true
+         end
+      end
+   end
+   -- subtract interface
+   for node, _ in pairs(twin_map) do
+      dset[node] = nil
+   end
+
+   return dset
+end
+
+-- find which surface belongs to which domain (and which belongs the both)
+local function classify_surfaces(mesh, dset1, dset2)
+   local sflags = {}
+   for k, surf in ipairs(mesh.surf_n) do
+      local l1, l2 = false, false
+      for node, _ in pairs(surf) do
+         l1 = l1 or dset1[node]
+         l2 = l2 or dset2[node]
+      end
+      sflags[k] = { l1, l2 }
+   end
+
+   return sflags
+end
+
+local function update_sets(mesh, twin_map, vn2, ve2, sflags, surf1, surf2)
    for k, ktwin in pairs(twin_map) do
       -- copy node
       local node = {}
@@ -59,9 +90,24 @@ local function update_vols(mesh, twin_map, vn2, ve2)
       end
    end
 
---[[
-   -- Phase III: add twins to a new surface if required
-   -- FIXME: other surfaces
+   -- update surfaces
+   for knode, ktwin in pairs(twin_map) do
+      for ksurf, surf in ipairs(mesh.surf_n) do
+         local sfl = sflags[ksurf]
+         if surf[knode] and sfl[2] then
+            -- need to add twin to the surface
+            surf[ktwin] = true
+            print('add twin ', knode, ktwin, ' to ', surf.id)
+            if not sfl[1] then
+               -- need to remove original node
+               surf[knode] = nil
+               print('remove node ', knode, ' from ', surf.id)
+            end
+         end
+      end
+   end
+
+   -- add original nodes and twins to new surfaces if required
    for k, ktwin in pairs(twin_map) do
       if surf1 then
          mesh.surf_n[surf1][k] = true
@@ -70,7 +116,6 @@ local function update_vols(mesh, twin_map, vn2, ve2)
          mesh.surf_n[surf2][ktwin] = true
       end
    end
-]]
 end
 
 -- dilate all nodes belonging to domain list in XY-plane by fac
@@ -104,45 +149,47 @@ local function twin_lists(twin_map, n)
 end
 
 local function mkgap(mesh, id_list1, id_list2, fac)
---[[
    local surf1, surf2 = nil, nil
 
-   if list1.surf_id then
-      table.insert(mesh.surf_n, { id = list1.surf_id })
+   if id_list1.surf_id then
+      table.insert(mesh.surf_n, { id = id_list1.surf_id })
       -- surface node sets index
       surf1 = #mesh.surf_n
    end
 
-   if list2.surf_id then
-      table.insert(mesh.surf_n, { id = list2.surf_id })
+   if id_list2.surf_id then
+      table.insert(mesh.surf_n, { id = id_list2.surf_id })
       -- surface node sets index
       surf2 = #mesh.surf_n
    end
-]]
 
    -- volume node sets
-   local vn1 = sets_by_ids(mesh.vol_n, id_list1)
-   local vn2 = sets_by_ids(mesh.vol_n, id_list2)
+   local vn1s = sets_by_ids(mesh.vol_n, id_list1)
+   local vn2s = sets_by_ids(mesh.vol_n, id_list2)
    -- volume element sets
-   local ve1 = sets_by_ids(mesh.vol_el, id_list1)
-   local ve2 = sets_by_ids(mesh.vol_el, id_list2)
+   local ve2s = sets_by_ids(mesh.vol_el, id_list2)
 
    local k_last, twin_map = mesh.nnodes, {}
 
    for k = 1, #id_list1 do
-      k_last = add_twin_map(mesh, k_last, twin_map, vn1[k], vn2[k])
+      k_last = add_twin_map(mesh, k_last, twin_map, vn1s[k], vn2s[k])
    end
 
-   -- FIXME: partition surfaces etc
+   -- calculate domain sets
+   local dset1 = domain_set(mesh, vn1s, twin_map)
+   local dset2 = domain_set(mesh, vn2s, twin_map)
+
+   -- classify surfaces
+   local sflags = classify_surfaces(mesh, dset1, dset2)
 
    -- update number of nodes
    mesh.nnodes = k_last
 
    for k = 1, #id_list1 do
-      update_vols(mesh, twin_map, vn2[k], ve2[k])
+      update_sets(mesh, twin_map, vn2s[k], ve2s[k], sflags, surf1, surf2)
    end
 
-   dilate_nodes_xy(mesh, vn2, fac)
+   dilate_nodes_xy(mesh, vn2s, fac)
 
    mesh.twin1, mesh.twin2 = twin_lists(twin_map, mesh.nnodes)
 end

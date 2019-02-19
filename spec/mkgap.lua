@@ -17,38 +17,35 @@ local function sets_by_ids(sets, ids)
 end
 
 -- identify nodes belonging to both domains
--- make twins of them
-local function make_twins(mesh, twin_map, vn1, vn2, ve2)
-
-   -- Phase I: build twin map, add twin nodes, replace volume node set refs
-   local kend = mesh.nnodes
+-- add twin nodes to the list
+local function add_twin_map(mesh, k_last, twin_map, vn1, vn2)
    for k = 1, mesh.nnodes do
-      if mesh.vol_n[vn1][k] and mesh.vol_n[vn2][k] then
-         local knew = twin_map[k]
-         if not knew then
-            -- make new twin of this node
-            kend = kend + 1
-            knew = kend
-            twin_map[k] = knew
-
-            -- copy node
-            local node = {}
-            mesh.nodes[knew] = node
-            for kc, vc in ipairs(mesh.nodes[k]) do
-               node[kc] = vc
-            end
-
-         end
-
-         -- change volume node set references
-         mesh.vol_n[vn2][k] = nil
-         mesh.vol_n[vn2][knew] = true
+      if mesh.vol_n[vn1][k] and mesh.vol_n[vn2][k] and not twin_map[k] then
+         -- make new twin of this node
+         k_last = k_last + 1
+         twin_map[k] = k_last
       end
    end
-   -- update number of nodes
-   mesh.nnodes = kend
+   return k_last
+end
 
-   -- Phase II: fix elements
+local function update_vols(mesh, twin_map, vn2, ve2)
+   for k, ktwin in pairs(twin_map) do
+      -- copy node
+      local node = {}
+      mesh.nodes[ktwin] = node
+      for kc, vc in ipairs(mesh.nodes[k]) do
+         node[kc] = vc
+      end
+
+      -- change volume node set references
+      if mesh.vol_n[vn2][k] then
+         mesh.vol_n[vn2][k] = nil
+         mesh.vol_n[vn2][ktwin] = true
+      end
+   end
+
+   -- fix elements
    for k = 1, mesh.nelems do
       if mesh.vol_el[ve2][k] then
          local el = mesh.elems[k]
@@ -74,8 +71,6 @@ local function make_twins(mesh, twin_map, vn1, vn2, ve2)
       end
    end
 ]]
-   return twin_map
-
 end
 
 -- dilate all nodes belonging to domain list in XY-plane by fac
@@ -132,10 +127,19 @@ local function mkgap(mesh, id_list1, id_list2, fac)
    local ve1 = sets_by_ids(mesh.vol_el, id_list1)
    local ve2 = sets_by_ids(mesh.vol_el, id_list2)
 
-   local twin_map = {}
+   local k_last, twin_map = mesh.nnodes, {}
 
    for k = 1, #id_list1 do
-      make_twins(mesh, twin_map, vn1[k], vn2[k], ve2[k])
+      k_last = add_twin_map(mesh, k_last, twin_map, vn1[k], vn2[k])
+   end
+
+   -- FIXME: partition surfaces etc
+
+   -- update number of nodes
+   mesh.nnodes = k_last
+
+   for k = 1, #id_list1 do
+      update_vols(mesh, twin_map, vn2[k], ve2[k])
    end
 
    dilate_nodes_xy(mesh, vn2, fac)

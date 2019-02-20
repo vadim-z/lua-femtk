@@ -149,7 +149,7 @@ function Exo2Class:define_els(els, mats)
          blk_elem_maps[bl_num] = el_map
          -- add attribute (element type), dimensions to var definition
          conn_def[bl_num] = {
-            type = self.numtype,
+            type = netCDF.NC.INT,
             dims = {
                string.format('num_el_in_blk%d', bl_num),
                string.format('num_nod_per_el%d', bl_num),

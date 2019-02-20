@@ -18,7 +18,7 @@ f:close()
 
 M = R.read_msh2('xtra/fclad_phys.msh')
 U.compress_mesh(M)
-gap.mkgap(M, {1}, {2, surf_id = 99}, 1.1)
+gap.mkgap(M, {1, surf_id = 5}, {2, surf_id = 11}, 1.1)
 U.write_mesh_exo2(M, 'ophys.exo', 'converted',
                   { surfn = 100, voln = 300 })
 

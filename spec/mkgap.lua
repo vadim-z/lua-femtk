@@ -1,13 +1,20 @@
 -- find node/el sets by ids
+
+local function find_id(sets, id)
+   local k = 1
+   while k <= #sets and sets[k].id ~= id do
+      k = k+1
+   end
+   -- false if not found
+   return (k <= #sets) and k
+end
+
 -- return list corresponding to ids
 local function sets_by_ids(sets, ids)
    local list = {}
-   for _, id in ipairs(ids) do
-      for kset, set in ipairs(sets) do
-         if set.id == id then
-            list[#list+1] = kset
-         end
-      end
+   for k, id in ipairs(ids) do
+      list[k] = assert(find_id(sets, id),
+                       'id not found: ' .. id)
    end
 
    return list
@@ -97,11 +104,9 @@ local function update_sets(mesh, twin_map, vn2, ve2, sflags, surf1, surf2)
          if surf[knode] and sfl[2] then
             -- need to add twin to the surface
             surf[ktwin] = true
-            print('add twin ', knode, ktwin, ' to ', surf.id)
             if not sfl[1] then
                -- need to remove original node
                surf[knode] = nil
-               print('remove node ', knode, ' from ', surf.id)
             end
          end
       end
@@ -151,16 +156,23 @@ end
 local function mkgap(mesh, id_list1, id_list2, fac)
    local surf1, surf2 = nil, nil
 
-   if id_list1.surf_id then
-      table.insert(mesh.surf_n, { id = id_list1.surf_id })
+   local function surf_id(id)
+      local surf = find_id(mesh.surf_n, id)
+      if not surf then
+         -- insert new surface node set and get index
+         table.insert(mesh.surf_n, { id = id })
       -- surface node sets index
-      surf1 = #mesh.surf_n
+         surf = #mesh.surf_n
+      end
+      return surf
+   end
+
+   if id_list1.surf_id then
+      surf1 = surf_id(id_list1.surf_id)
    end
 
    if id_list2.surf_id then
-      table.insert(mesh.surf_n, { id = id_list2.surf_id })
-      -- surface node sets index
-      surf2 = #mesh.surf_n
+      surf2 = surf_id(id_list2.surf_id)
    end
 
    -- volume node sets

@@ -1,5 +1,4 @@
 -- find node/el sets by ids
-
 local function find_id(sets, id)
    local k = 1
    while k <= #sets and sets[k].id ~= id do

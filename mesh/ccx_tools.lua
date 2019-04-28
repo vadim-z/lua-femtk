@@ -2,11 +2,21 @@ local function calc_boundary_disp(mesh, E, blist)
    -- calculate boundary displacements given strains at infinity
    -- E are strains in Voigt notation, shear strain doubled
 
+   -- calculate set of required boundaries
+   local bset = {}
+   for _, b in ipairs(blist) do
+      bset[b] = true
+   end
+
    -- all boundary nodes
    local bnodes = {}
-   for kb = 1, #blist do
-      for kn, _ in pairs(mesh.surf_n[kb]) do
-         bnodes[kn] = true
+   for _, set in ipairs(mesh.surf_n) do
+      if bset[set.id] then
+         for node, _ in pairs(set) do
+            if node ~= 'id' then
+               bnodes[node] = true
+            end
+         end
       end
    end
 

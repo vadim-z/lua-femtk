@@ -31,5 +31,8 @@ elseif fmt == 'netCDF' then
    }
 end
 
-W.write_mesh_ccx(arg[2], M, set_out)
-
+local f = assert(io.open(arg[2], 'w'))
+W.write_ccx_mesh(f, M)
+W.write_ccx_model_boundary(f, M)
+W.write_ccx_tables(M, set_out)
+f:close()

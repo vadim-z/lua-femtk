@@ -73,11 +73,17 @@ local function write_sets(f, kind, prefix, sets, nitems)
    end
 end
 
-local function write_model_boundary(f, mesh)
+local function write_ccx_model_boundary(f, mesh, dof, amp)
    -- write boundary conditions defined as a part of model
-   f:write('*BOUNDARY\n')
+   f:write('*BOUNDARY')
+   if amp then
+      f:write(', AMPLITUDE=', amp)
+   end
+   f:write('\n')
+   dof = dof or { 1, 2, 3}
    for _, bdisp in ipairs(mesh.bdisp) do
-      for kd = 1, 3 do
+      for kdi = 1, #dof do
+         kd = dof[kdi]
          f:write(string.format('%10u,%d,%d,%12.5e\n',
                                bdisp[1], kd, kd, bdisp[1+kd]))
       end
@@ -136,7 +142,7 @@ local function write_sets_netCDF(mesh, fnames_tbl)
 
    -- prepare one table corresponding to sets
    local function mk_sets_netCDF(sets, nitems, varprefix, dimname)
-      if varprefix then
+      if varprefix and #sets > 0 then
          local ids = {}
          -- the map
          for ks, set in ipairs(sets) do
@@ -182,11 +188,10 @@ local set_writers = {
    netCDF = write_sets_netCDF,
 }
 
-local function write_mesh_ccx(fname, mesh, fnames_tbl)
+local function write_ccx_mesh(f, mesh)
    -- compress if needed
    mesh_utils.compress_mesh(mesh)
 
-   local f = assert(io.open(fname, 'w'))
    write_nodes(f, mesh)
    write_els(f, mesh)
    -- material sets
@@ -194,20 +199,14 @@ local function write_mesh_ccx(fname, mesh, fnames_tbl)
    write_sets(f, 'ELSET', 'EMAT', mesh.vol_el, #mesh.elems)
    -- boundary sets
    write_sets(f, 'NSET', 'NBOU', mesh.surf_n, #mesh.nodes)
+end
 
-   -- boundary conditions
-   if mesh.bdisp then
-      write_model_boundary(f, mesh)
-   end
-
-   -- write tables
-   if fnames_tbl then
-      set_writers[fnames_tbl.fmt](mesh, fnames_tbl)
-   end
-
-   f:close()
+local function write_ccx_tables(mesh, fnames_tbl)
+   set_writers[fnames_tbl.fmt](mesh, fnames_tbl)
 end
 
 return {
-   write_mesh_ccx = write_mesh_ccx,
+   write_ccx_mesh = write_ccx_mesh,
+   write_ccx_model_boundary = write_ccx_model_boundary,
+   write_ccx_tables = write_ccx_tables,
 }

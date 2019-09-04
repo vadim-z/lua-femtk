@@ -19,7 +19,7 @@ end
 -- initialization
 function Exo2_writer_class:init(par)
    self.filename = par.filename
-   self.fp_type = par.fp_type
+   self.init_par = par
    self.sets = par.sets
    return self
 end
@@ -28,7 +28,7 @@ end
 function Exo2_writer_class:rec1C(_)
    -- initial record
    self.f = exo2s.Exo2File()
-   self.f:init(self.filename, self.fp_type)
+   self.f:init(self.filename, self.init_par)
 
    -- initialize internal state variables
    self.title = ''

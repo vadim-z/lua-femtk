@@ -4,7 +4,7 @@ local netCDF = require('netCDF/writer')
 local Exo2Class = {}
 
 -- initialize general EXODUS II entities
-local function define_gen(self, fp_type)
+local function define_gen(self, fp_type, fmt)
    local wsize
    if fp_type == 'float' then
       self.numtype = netCDF.NC.FLOAT
@@ -16,6 +16,7 @@ local function define_gen(self, fp_type)
       error('Invalid floating point type: ', fp_type)
    end
 
+   self.fmt = fmt
    self.dims = {}
    self.dims.time_step = 0
    self.dims.four = 4
@@ -36,8 +37,9 @@ local function define_gen(self, fp_type)
 end
 
 -- initialization method
-function Exo2Class:init(fname, fp_type)
-   define_gen(self, fp_type or 'double')
+function Exo2Class:init(fname, params)
+   params = params or {}
+   define_gen(self, params.fp_type or 'double', params.fmt)
    self.filename = fname
 end
 
@@ -405,6 +407,9 @@ function Exo2Class:define_node_vars(varlist)
    for _, var in ipairs(varlist) do
       self:define_node_var(var)
    end
+end
+
+local function ordered_header(self)
 end
 
 local function create_file(self)

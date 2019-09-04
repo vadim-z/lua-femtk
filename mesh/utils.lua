@@ -126,7 +126,7 @@ end
 local function save_mesh_exo2(mesh, fname, par)
    local f = exo2s.Exo2File()
    compress_mesh(mesh)
-   f:init(fname, par.fp_type)
+   f:init(fname, par)
    f:define_title(par.title)
    f:define_nodes(nodes_to_exo2(mesh.nodes))
    f:define_els(mesh.elems)

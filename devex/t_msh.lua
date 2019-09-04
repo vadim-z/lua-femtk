@@ -6,5 +6,7 @@ if #arg < 2 then
 end
 
 local M = R.read_msh2(arg[1])
-U.write_mesh_exo2(M, arg[2], 'converted',
-                  { surfn = 100, voln = 300 })
+U.write_mesh_exo2(M, arg[2],
+                  { title = 'converted',
+                    ids = { surfn = 100, voln = 300 },
+                    fp_type = arg[3] })

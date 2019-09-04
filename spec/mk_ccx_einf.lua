@@ -19,15 +19,15 @@ local set_out = {
 local f = assert(io.open(arg[2], 'w'))
 W.write_ccx_mesh(f, M)
 
--- default boundary conditions
+-- boundary conditions
+local b_ext = {1,2,3,4,5,6}
+f:write('*NSET, NSET=NBOUEXT\n')
+for k = 1, #b_ext do
+   f:write(('NBOU%d,\n'):format(b_ext[k]))
+end
 f:write([[
 *BOUNDARY
-NBOU1,1,3
-NBOU2,1,3
-NBOU3,1,3
-NBOU4,1,3
-NBOU5,1,3
-NBOU6,1,3
+NBOUEXT,1,3
 ]])
 
 local mode = math.tointeger(arg[3])
@@ -36,7 +36,7 @@ if mode == 123 then
    for ke = 1, 3 do
       local einf = { 0., 0., 0., 0., 0., 0. }
       einf[ke] = 1.0
-      T.calc_boundary_disp(M, einf, {1,2,3,4,5,6})
+      T.calc_boundary_disp(M, einf, b_ext)
       local amp = string.format('AE%u', ke)
       W.write_ccx_model_boundary(f, M, {ke}, amp)
    end

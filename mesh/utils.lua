@@ -123,21 +123,21 @@ local function exo2_nsets(mesh, ids)
 end
 
 -- create EXODUS II file and save mesh to it
-local function save_mesh_exo2(mesh, fname, title, ids)
+local function save_mesh_exo2(mesh, fname, par)
    local f = exo2s.Exo2File()
    compress_mesh(mesh)
-   f:init(fname)
-   f:define_title(title)
+   f:init(fname, par.fp_type)
+   f:define_title(par.title)
    f:define_nodes(nodes_to_exo2(mesh.nodes))
    f:define_els(mesh.elems)
-   f:define_nodesets(exo2_nsets(mesh, ids),
+   f:define_nodesets(exo2_nsets(mesh, par.ids),
                      { 'SURF', 'VOL' }, true )
    return f
 end
 
 -- write mesh to EXODUS II file and close it afterwards
-local function write_mesh_exo2(mesh, fname, title, ids)
-   local f = save_mesh_exo2(mesh, fname, title, ids)
+local function write_mesh_exo2(...)
+   local f = save_mesh_exo2(...)
    f:close() -- commit changes
 end
 

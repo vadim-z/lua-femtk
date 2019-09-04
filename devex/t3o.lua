@@ -3,15 +3,21 @@ local NC = require('netCDF/writer')
 local def = {
    fmt = 1,
    dims = {
-      time_step = 0,
-      num_nodes = 9,
-      len = 20,
-      three = 3,
+      {
+         ordered = true,
+         { name = 'time_step', size = 0, },
+         { name = 'num_nodes', size = 9, },
+         { name = 'len', size = 20, },
+         { name = 'three', size = 3, },
+      },
    },
    atts = {
-      atr1 = {2, type = NC.NC.SHORT},
-      attr2 = 'bzx',
-      a3 = {1.5, type = NC.NC.FLOAT},
+      {
+         ordered = true,
+         { name = 'atr1', 2, type = NC.NC.SHORT},
+         { name = 'attr2', val = 'bzx', },
+         { name = 'a3', 1.5, -7.6, type = NC.NC.FLOAT},
+      },
    },
    vars = {
       {

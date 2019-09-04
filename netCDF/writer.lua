@@ -60,7 +60,7 @@ do
       local kdim = 0
       local fixed = true -- are all dimensions fixed?
 
-      for dim_name, dim_size in pairs(dimlist) do
+      local function process_dim(dim_name, dim_size)
          assert(dim_size >= 0, 'Invalid dimension ' .. dim_name)
          local rec = dim_size == 0
          assert(fixed or not rec,
@@ -73,6 +73,16 @@ do
          end
          ncdims[kdim] = { name = dim_name, size = dim_size }
          ncdims.xref[dim_name] = kdim
+      end  -------- process_dim
+
+      for dim_name, dim_v in pairs(dimlist) do
+         if type(dim_v) == 'table' and dim_v.ordered then
+            for k = 1, #dim_v do
+               process_dim(dim_v[k].name, dim_v[k].size)
+            end
+         else
+            process_dim(dim_name, dim_v)
+         end
       end
 
       -- binary representation
@@ -102,7 +112,8 @@ do
 
       -- leave place for tag or absent
       bintbl[1] = false
-      for att_name, att_v in pairs(attlist) do
+
+      local function process_att(att_name, att_v)
          natts = natts + 1
          -- write each attribute
          if type(att_v) == 'string' then
@@ -117,6 +128,16 @@ do
             end
             -- padding
             tinsert(bintbl, pad4z(attlen))
+         end
+      end -------- process_att
+
+      for att_name, att_v in pairs(attlist) do
+         if type(att_v) == 'table' and att_v.ordered then
+            for k = 1, #att_v do
+               process_att(att_v[k].name, att_v[k].val or att_v[k])
+            end
+         else
+            process_att(att_name, att_v)
          end
       end
 

@@ -410,12 +410,107 @@ function Exo2Class:define_node_vars(varlist)
 end
 
 local function ordered_header(self)
+   -- prepare ordered blocks
+   local hdr = {
+      fmt = self.fmt,
+      dims = { { ordered = true } },
+      atts = { { ordered = true } },
+      vars = { { ordered = true } },
+   }
+   local dims, atts, vars = hdr.dims[1], hdr.atts[1], hdr.vars[1]
+
+   -- order dimensions
+   local function insert_dim(names)
+      for k = 1, #names do
+         local name = names[k]
+         local size = self.dims[name]
+         if size then
+            table.insert(dims, { name = name, size = size })
+         end
+      end
+   end
+   insert_dim{'len_string', 'len_line', 'four', 'time_step',
+              'num_dim', 'num_nodes', 'num_elem', 'num_el_blk',
+              'num_node_sets'}
+   local nblocks = self.dims.num_el_blk or 0
+   for k = 1, nblocks do
+      insert_dim{
+         string.format('num_el_in_blk%d', k),
+         string.format('num_nod_per_el%d', k),
+      }
+   end
+   local nsets = self.dims.num_node_sets or 0
+   for k = 1, nsets do
+      insert_dim{string.format('num_nod_ns%d', k)}
+   end
+   insert_dim{'num_qa_rec', 'num_info', 'num_glo_var', 'num_nod_var'}
+
+   -- order attributes
+   local function insert_att(names)
+      for k = 1, #names do
+         local name = names[k]
+         local val = self.atts[name]
+         if type(val) == 'table' then
+            val.name = name
+            table.insert(atts, val)
+         elseif type(val) == 'string' then
+            table.insert(atts, { name = name, val = val })
+         end
+      end
+   end
+   insert_att{'api_version', 'version', 'floating_point_word_size',
+              'file_size', 'title'}
+
+   -- order vars
+   local function insert_var(names)
+      for k = 1, #names do
+         local name = names[k]
+         local val = self.vars[name]
+         if val then
+            val.name = name
+            table.insert(vars, val)
+         end
+      end
+   end
+
+   local function insert_props(fmt)
+      local k = 1
+      local prop_name = string.format(fmt, k)
+      while self.vars[prop_name] do
+         insert_var{prop_name}
+         k = k+1
+         prop_name = string.format(fmt, k)
+      end
+   end
+
+   insert_var{'time_whole', 'eb_status'}
+   insert_props('eb_prop%d')
+   insert_var{'ns_status'}
+   insert_props('ns_prop%d')
+   insert_var{'coordx', 'coordy', 'coordz', 'coor_names',
+              'elem_map'}
+   for k = 1, nblocks do
+      insert_var{ string.format('connect%d', k) }
+   end
+   for k = 1, nsets do
+      insert_var{ string.format('node_ns%d', k) }
+   end
+   insert_var{'qa_records', 'info_records',
+              'vals_glo_var', 'name_glo_var'}
+   local nsvars = self.dims.num_nod_var or 0
+   for k = 1, nsvars do
+      insert_var{ string.format('vals_nod_var%d', k) }
+   end
+   insert_var{'name_nod_var'}
+
+   return hdr
 end
 
 local function create_file(self)
    assert(not self.NCfile, 'File already created')
    self.NCfile = netCDF.NCWriter()
-   self.NCfile:create(self.filename, self)
+   local hdr = ordered_header(self)
+   self.NCfile:create(self.filename, hdr)
 
    -- write fixed variables
    for name, var in pairs(self.vals_fixed) do

@@ -21,6 +21,7 @@ function Exo2_writer_class:init(par)
    self.filename = par.filename
    self.init_par = par
    self.sets = par.sets
+   self.sets_filename = par.exo2_sets_filename
    return self
 end
 
@@ -224,6 +225,10 @@ do
       end
 
       self.f:define_els(elts, self.mats)
+
+      if self.sets_filename then
+         self.f:merge_exo2_sets(self.sets_filename)
+      end
    end
 end
 

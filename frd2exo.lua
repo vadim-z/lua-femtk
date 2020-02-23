@@ -10,12 +10,13 @@ Options:
 -2: use netCDF-2 format
 -f: use float (real*4) type instead of default
 -d: use double (real*8) type instead of default
+-x exo2_file : merge node and side sets from exo2_file
 -sets set_file : use set_file to read node sets
 -surfn id : put surface node sets with ids starting from id
 -voln id : put volume node sets with ids starting from id
 ]]
 
-local ftype, fnames, sets, fmt = nil, {}, nil, nil
+local ftype, fnames, sets, exo2_sets_filename, fmt = nil, {}, nil, nil, nil
 
 local karg = 1
 while karg <= #arg do
@@ -28,6 +29,10 @@ while karg <= #arg do
       ftype = 'float'
    elseif a == '-d' then
       ftype = 'double'
+   elseif a == '-x' then
+      assert(karg < #arg, 'Too few arguments')
+      karg = karg + 1
+      exo2_sets_filename = arg[karg]
    elseif a == '-sets' then
       assert(karg < #arg, 'Too few arguments')
       karg = karg + 1
@@ -52,6 +57,7 @@ local wr = frd_exo_map.Exo2_writer({
       filename = fnames[2],
       fp_type = ftype,
       sets = sets,
+      exo2_sets_filename = exo2_sets_filename,
       fmt = fmt,
 })
 read_frd.read_frd(fnames[1], wr)

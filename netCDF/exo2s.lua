@@ -1,5 +1,6 @@
 -- Module to write simplified EXODUS II files
 local netCDF = require('netCDF/writer')
+local netCDF_reader = require('netCDF/reader')
 
 local Exo2Class = {}
 
@@ -429,6 +430,98 @@ function Exo2Class:define_sidesets(ssets, props)
       dims = { 'num_side_sets' },
    }
    self.vals_fixed.ss_status = status
+end
+
+local function add_sets_from_file(self, set_file, names)
+   -- shortcuts
+   local set_dims = set_file.dim_list.map
+   -- check if requested sets do exist
+   local num_sets = set_dims[names.num_sets]
+   if num_sets then
+      -- Add dimension with number of sets
+      self.dims[names.num_sets] = num_sets.size
+
+      -- Add per-set dim and vars
+      for kset = 1, num_sets.size do
+         -- get length of the set
+         local dimname = string.format(names.num_dim, kset)
+         self.dims[dimname] = set_dims[dimname].size
+         for kv = 1, #names.svars do
+            local varname = string.format(names.svars[kv], kset)
+            self.vars[varname] = {
+               type = netCDF.NC.INT,
+               dims = { dimname },
+            }
+            -- get var
+            self.vals_fixed[varname] =
+               set_file:read_var(varname, false, false)
+         end
+      end
+
+      -- properties
+      local kprop = 1
+      local prop_var_name = string.format('%s_prop%d', names.prefix, kprop)
+      local var = set_file.var_list.map[prop_var_name]
+      while var do
+         local prop_name = var.atts.map.name.string
+         -- define var
+         self.vars[prop_var_name] = {
+            type = netCDF.NC.INT,
+            dims = { names.num_sets },
+            atts = { name = prop_name }
+         }
+         self.vals_fixed[prop_var_name] =
+            set_file:read_var(prop_var_name, false, false)
+
+         kprop = kprop+1
+         prop_var_name = string.format('%s_prop%d', names.prefix, kprop)
+         var = set_file.var_list.map[prop_var_name]
+      end
+
+      -- status
+      local status_var_name = string.format('%s_status', names.prefix)
+      -- define var
+      self.vars[status_var_name] = {
+         type = netCDF.NC.INT,
+         dims = { names.num_sets },
+      }
+      self.vals_fixed[status_var_name] =
+         set_file:read_var(status_var_name, false, false)
+   end
+end
+
+-- merge node and side sets from other EXODUS II file
+function Exo2Class:merge_exo2_sets(filename)
+   assert(not self.NCfile, 'Unexpected sets definition')
+
+   local set_file = netCDF_reader.NCReader()
+   set_file:open(filename)
+
+   -- process node sets
+   if self.dims.num_node_sets then
+      io.stderr:write('Node sets are already defined\n')
+   else
+      add_sets_from_file(self, set_file, {
+                            num_sets = 'num_node_sets',
+                            num_dim = 'num_nod_ns%d',
+                            svars = { 'node_ns%d' },
+                            prefix = 'ns',
+      })
+   end
+
+   -- process side sets
+   if self.dims.num_side_sets then
+      io.stderr:write('Side sets are already defined\n')
+   else
+      add_sets_from_file(self, set_file, {
+                            num_sets = 'num_side_sets',
+                            num_dim = 'num_side_ss%d',
+                            svars = { 'elem_ss%d', 'side_ss%d' },
+                            prefix = 'ss',
+      })
+   end
+
+   set_file:close()
 end
 
 -- add global variables

@@ -1,6 +1,6 @@
 local R = require('mesh/read_mesh_netgen')
-local W = require('mesh/write_ccx')
-local T = require('mesh/ccx_tools')
+local W = require('mesh/old/write_ccx')
+local T = require('mesh/old/ccx_tools')
 
 if #arg < 2 then
    error('Not enough arguments!')

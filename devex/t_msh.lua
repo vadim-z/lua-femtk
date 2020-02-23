@@ -8,5 +8,5 @@ end
 local M = R.read_msh2(arg[1])
 U.write_mesh_exo2(M, arg[2],
                   { title = 'converted',
-                    ids = { surfn = 100, voln = 300 },
+                    ids = { surfn = 100, voln = 300, surfss = 500 },
                     fp_type = arg[3] })

@@ -1,5 +1,5 @@
 local R = require('mesh/read_msh2')
-local W = require('mesh/write_ccx')
+local W = require('mesh/old/write_ccx')
 
 if #arg < 2 then
    error('Not enough arguments!')

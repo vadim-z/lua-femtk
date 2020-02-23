@@ -51,6 +51,21 @@ local function fix_elems(imap, elems, nelems)
    return elems_fix
 end
 
+-- correct element numbers in sides
+local function fix_sides(imap, sides)
+   for ks = 1, #sides do
+      local s = sides[ks]
+      local el_map = imap[s.el]
+      if el_map then
+         s.el = el_map
+      else
+         error(string.format(
+                  'Failed to map element %d in side with id %d',
+                  s.el, s.side))
+      end
+   end
+end
+
 local function compress_mesh(mesh)
    if mesh.node_map then
       -- build node map
@@ -73,13 +88,19 @@ local function compress_mesh(mesh)
 
    if mesh.elem_map then
       -- build elem map
-      local map, _ = bool_to_map(mesh.elem_map, mesh.nelems)
+      local map, imap = bool_to_map(mesh.elem_map, mesh.nelems)
       -- compress elements
       mesh.elems = compress_var(map, mesh.elems)
       -- compress element sets
       for ks = 1, #mesh.vol_el do
          mesh.vol_el[ks] = compress_var(map, mesh.vol_el[ks])
       end
+
+      -- fix side definitions
+      for ks = 1, #mesh.surf_ss do
+         fix_sides(imap, mesh.surf_ss[ks])
+      end
+
       -- fix count and map
       mesh.nelems = #mesh.elems
       mesh.elem_map = false
@@ -104,20 +125,41 @@ local function exo2_nsets(mesh, ids)
    local sets = {}
 
    local function add_sets(n_sets, id, code)
-      for _, set in ipairs(n_sets) do
-         local rset, _ = bool_to_map(set, mesh.nnodes)
-         rset.id =  id + set.id
-         rset.SURF = code
-         rset.VOL = 1 - code
-         table.insert(sets, rset)
+      if id then
+         for _, set in ipairs(n_sets) do
+            local rset, _ = bool_to_map(set, mesh.nnodes)
+            rset.id =  id + set.id
+            rset.SURF = code
+            rset.VOL = 1 - code
+            table.insert(sets, rset)
+         end
       end
    end
 
    -- first, add surface sets
    add_sets(mesh.surf_n, ids.surfn, 1)
    -- then, add volume sets
-   -- first, add surface sets
    add_sets(mesh.vol_n, ids.voln, 0)
+
+   return sets
+end
+
+local function exo2_ssets(mesh, ids)
+   local sets = {}
+
+   local id = ids.surfss
+
+   if id then
+      for kset = 1, #mesh.surf_ss do
+         local set = mesh.surf_ss[kset]
+         local rset = {}
+         for ks = 1, #set do
+            table.insert(rset, set[ks])
+         end
+         rset.id =  ids.surfss + set.id
+         table.insert(sets, rset)
+      end
+   end
 
    return sets
 end
@@ -132,6 +174,7 @@ local function save_mesh_exo2(mesh, fname, par)
    f:define_els(mesh.elems)
    f:define_nodesets(exo2_nsets(mesh, par.ids),
                      { 'SURF', 'VOL' }, true )
+   f:define_sidesets(exo2_ssets(mesh, par.ids), {})
    return f
 end
 

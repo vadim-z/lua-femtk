@@ -129,6 +129,7 @@ function Exo2Class:define_els(els, mats)
    -- ids of the blocks
    local ids = {}
    -- inverse map
+   self.inv_elem_map_conseq = {}
    self.inv_elem_map_blk = {}
    self.inv_elem_map_loc = {}
 
@@ -186,6 +187,7 @@ function Exo2Class:define_els(els, mats)
          -- inverse map entry
          self.inv_elem_map_blk[kext] = kblk
          self.inv_elem_map_loc[kext] = kint
+         self.inv_elem_map_conseq[kext] = #elem_map
       end
    end
 
@@ -345,6 +347,90 @@ function Exo2Class:define_nodesets(nsets, props, raw)
    self.vals_fixed.ns_status = status
 end
 
+-- define side sets and related variables
+function Exo2Class:define_sidesets(ssets, props)
+   assert(not self.NCfile, 'Unexpected side sets definition')
+   if #ssets == 0 then
+      -- nothing to add
+      return
+   end
+   -- add netCDF entities related to ssets
+   -- dimensions
+   self.dims.num_side_sets = #ssets
+
+   -- create side sets properties
+   local status = {}
+   local prop_vals = {}
+   local ids = {}
+   for kprop = 1, #props do
+      prop_vals[kprop] = {}
+   end
+
+   -- iterate over side sets
+   for kset, sset in ipairs(ssets) do
+      local els, sides = {}, {}
+
+      for ks = 1, #sset do
+         -- map external element ID to the internal one
+         els[ks] = self.inv_elem_map_conseq[sset[ks].el]
+         sides[ks] = sset[ks].side
+      end
+
+      -- create side sets dimensions and variables
+      local dimname = string.format('num_side_ss%d', kset)
+      local varname_el = string.format('elem_ss%d', kset)
+      local varname_side = string.format('side_ss%d', kset)
+      -- sides in set
+      self.dims[dimname] = #sset
+
+      self.vars[varname_el] = {
+         type = netCDF.NC.INT,
+         dims = { dimname },
+      }
+      self.vals_fixed[varname_el] = els
+      self.vars[varname_side] = {
+         type = netCDF.NC.INT,
+         dims = { dimname },
+      }
+      self.vals_fixed[varname_side] = sides
+
+      -- side sets properties
+      status[kset] = 1
+      ids[kset] = assert(sset.id, 'Absent side set ID')
+      for kprop, name_prop in ipairs(props) do
+         prop_vals[kprop][sset] = assert(sset[name_prop],
+                                     'Absent side set property ' .. name_prop)
+      end
+   end
+
+   -- create extra variables
+   -- add ss_prop1 variable
+   self.vars.ss_prop1 = {
+      type = netCDF.NC.INT,
+      dims = { 'num_side_sets' },
+      atts = { name = 'ID' }
+   }
+   self.vals_fixed.ss_prop1 = ids
+
+   -- add other properties
+   for kprop, name_prop in ipairs(props) do
+      local name = string.format('ss_prop%d', kprop+1)
+      self.vars[name] = {
+         type = netCDF.NC.INT,
+         dims = { 'num_side_sets' },
+         atts = { name = name_prop }
+      }
+      self.vals_fixed[name] = prop_vals[kprop]
+   end
+
+   -- ss_status
+   self.vars.ss_status = {
+      type = netCDF.NC.INT,
+      dims = { 'num_side_sets' },
+   }
+   self.vals_fixed.ss_status = status
+end
+
 -- add global variables
 -- NB: given that
 --     1) current netCDF Lua interface supports writing a variable or a record
@@ -431,7 +517,7 @@ local function ordered_header(self)
    end
    insert_dim{'len_string', 'len_line', 'four', 'time_step',
               'num_dim', 'num_nodes', 'num_elem', 'num_el_blk',
-              'num_node_sets'}
+              'num_node_sets', 'num_side_sets'}
    local nblocks = self.dims.num_el_blk or 0
    for k = 1, nblocks do
       insert_dim{
@@ -442,6 +528,10 @@ local function ordered_header(self)
    local nsets = self.dims.num_node_sets or 0
    for k = 1, nsets do
       insert_dim{string.format('num_nod_ns%d', k)}
+   end
+   local ssets = self.dims.num_side_sets or 0
+   for k = 1, ssets do
+      insert_dim{string.format('num_side_ss%d', k)}
    end
    insert_dim{'num_qa_rec', 'num_info', 'num_glo_var', 'num_nod_var'}
 
@@ -487,6 +577,8 @@ local function ordered_header(self)
    insert_props('eb_prop%d')
    insert_var{'ns_status'}
    insert_props('ns_prop%d')
+   insert_var{'ss_status'}
+   insert_props('ss_prop%d')
    insert_var{'coordx', 'coordy', 'coordz', 'coor_names',
               'elem_map'}
    for k = 1, nblocks do
@@ -494,6 +586,10 @@ local function ordered_header(self)
    end
    for k = 1, nsets do
       insert_var{ string.format('node_ns%d', k) }
+   end
+   for k = 1, ssets do
+      insert_var{ string.format('elem_ss%d', k) }
+      insert_var{ string.format('side_ss%d', k) }
    end
    insert_var{'qa_records', 'info_records',
               'vals_glo_var', 'name_glo_var'}

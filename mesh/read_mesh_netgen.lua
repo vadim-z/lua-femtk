@@ -134,6 +134,8 @@ local function read_mesh_netgen_tets(fname)
    mesh.nelems = #mesh.elems
    mesh.elem_map = false
    read_surf_elems(mesh, f)
+   -- FIXME: generate side definitions
+   mesh.surf_ss = { imap = {} }
    f:close()
    return mesh
 end

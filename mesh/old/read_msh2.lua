@@ -160,10 +160,11 @@ local function read_elems(M, f)
    local nelems = gettoks(f)
    local elems = {}
    local elem_map = {}
-   local elsets = { imap = {} }
-   local nsets = { imap = {} }
+   local vol_el = { imap = {} }
+   local vol_n = { imap = {} }
+   local surf_n = { imap = {} }
    local side_tree = {}
-   local ssets = { imap = {} }
+   local surf_ss = { imap = {} }
    local max_el = 0
 
    local function marked_set(sets, mark)
@@ -222,7 +223,7 @@ local function read_elems(M, f)
                   -- identified side
 
                   -- insert side set
-                  local sset = marked_set(ssets, phy)
+                  local sset = marked_set(surf_ss, phy)
                   table.insert(sset, { el = kel, side = ks } )
                end
 
@@ -254,20 +255,6 @@ local function read_elems(M, f)
          phy = geom
       end
 
-      -- add nodes to set
-      do
-         -- mark nodes in node set
-         local nset = marked_set(nsets, phy)
-         -- proceed with nodes
-         local nnodes = elty[2]
-
-         for kn = 1, nnodes do
-            local node = ls[nix+kn]
-            nset[node] = true
-            M.node_map[node] = true
-         end
-      end
-
       if elty[3] == 3 then
          -- 3D element, register, add element to set, add nodes to set
          local el = {}
@@ -280,8 +267,11 @@ local function read_elems(M, f)
          el.sides = elty.sides
 
          -- mark volume element set
-         local elset = marked_set(elsets, phy)
-         elset[i] = true
+         local nset = marked_set(vol_el, phy)
+         nset[i] = true
+
+         -- mark nodes in volume node set
+         nset = marked_set(vol_n, phy)
 
          -- proceed with nodes
          local nnodes = elty[2]
@@ -295,9 +285,23 @@ local function read_elems(M, f)
                node = ls[nix + elty.map[kn] ]
             end
             el[kn] = node
+            nset[node] = true
+            M.node_map[node] = true
          end
       elseif elty[3] == 2 then
-         -- 2D element
+         -- 2D element, add nodes to set
+
+         -- mark nodes in surface node set
+         local nset = marked_set(surf_n, phy)
+
+         -- proceed with nodes
+         local nnodes = elty[2]
+
+         for kn = 1, nnodes do
+            local node = ls[nix+kn]
+            nset[node] = true
+            M.node_map[node] = true
+         end
 
          -- record element side
          -- identify side by ordered corner nodes
@@ -327,9 +331,10 @@ local function read_elems(M, f)
    M.elems = elems
    M.nelems = max_el
    M.elem_map = elem_map
-   M.nsets = nsets
-   M.elsets = elsets
-   M.ssets = ssets
+   M.vol_n = vol_n
+   M.vol_el = vol_el
+   M.surf_n = surf_n
+   M.surf_ss = surf_ss
 
 end
 

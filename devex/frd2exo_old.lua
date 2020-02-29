@@ -11,9 +11,12 @@ Options:
 -f: use float (real*4) type instead of default
 -d: use double (real*8) type instead of default
 -x exo2_file : merge node and side sets from exo2_file
+-sets set_file : use set_file to read node sets
+-surfn id : put surface node sets with ids starting from id
+-voln id : put volume node sets with ids starting from id
 ]]
 
-local ftype, fnames, exo2_sets_filename, fmt = nil, {}, nil, nil, nil
+local ftype, fnames, sets, exo2_sets_filename, fmt = nil, {}, nil, nil, nil
 
 local karg = 1
 while karg <= #arg do
@@ -30,6 +33,15 @@ while karg <= #arg do
       assert(karg < #arg, 'Too few arguments')
       karg = karg + 1
       exo2_sets_filename = arg[karg]
+   elseif a == '-sets' then
+      assert(karg < #arg, 'Too few arguments')
+      karg = karg + 1
+      sets = { filename = arg[karg] }
+   elseif a == '-surfn' or a == '-voln' then
+      assert(karg < #arg, 'Too few arguments')
+      assert(sets, 'Sets file undefined')
+      karg = karg + 1
+      sets[a:sub(2)] = math.tointeger(arg[karg])
    else
       table.insert(fnames, a)
    end
@@ -44,6 +56,7 @@ end
 local wr = frd_exo_map.Exo2_writer({
       filename = fnames[2],
       fp_type = ftype,
+      sets = sets,
       exo2_sets_filename = exo2_sets_filename,
       fmt = fmt,
 })

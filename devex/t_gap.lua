@@ -1,5 +1,5 @@
-local R = require('mesh/read_msh2')
-local U = require('mesh/utils')
+local R = require('mesh/old/read_msh2')
+local U = require('mesh/old/utils')
 local gap = require('spec/mkgap')
 
 local M

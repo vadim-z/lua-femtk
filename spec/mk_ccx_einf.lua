@@ -1,4 +1,4 @@
-local R = require('mesh/read_msh2')
+local R = require('mesh/old/read_msh2')
 local W = require('mesh/old/write_ccx')
 local T = require('mesh/old/ccx_tools')
 

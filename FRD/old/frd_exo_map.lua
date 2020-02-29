@@ -20,6 +20,7 @@ end
 function Exo2_writer_class:init(par)
    self.filename = par.filename
    self.init_par = par
+   self.sets = par.sets
    self.sets_filename = par.exo2_sets_filename
    return self
 end
@@ -45,6 +46,16 @@ function Exo2_writer_class:rec1C(_)
    self.saved_node_vals = nil
    self.nrec = 0
    self.stepmap = {}
+
+   -- read sets file if required
+   if self.sets then
+      self.set_file = netCDF_reader.NCReader()
+      self.set_file:open(self.sets.filename)
+      self.set_vars = self.set_file:read_vars(false)
+      self.set_file:close()
+   else
+      self.set_file = nil
+   end
 
 end
 
@@ -120,6 +131,39 @@ do
    end
 end
 
+local function save_node_sets(self)
+   if not self.sets then
+      -- no sets, nothing to do
+      return
+   end
+
+   local node_sets = {}
+   local prop_names = { 'SURF', 'VOL' }
+
+   local function add_sets(prefix, code)
+      local id = self.sets[prefix]
+      if id then
+         local len_set = self.set_file.dim_list.map['num_' .. prefix].size
+         for ks = 1, len_set do
+            local set_name = string.format('%s_%d', prefix, ks)
+            local set = self.set_vars[set_name]
+
+            set.id = id + self.set_vars['id_' .. prefix][ks]
+            set.SURF = code
+            set.VOL = 1 - code
+            table.insert(node_sets, set)
+         end
+      end
+   end
+
+   -- first, add surface sets
+   add_sets('surfn', 1)
+   -- then, add volume sets
+   add_sets('voln', 0)
+
+   self.f:define_nodesets(node_sets, prop_names)
+end
+
 function Exo2_writer_class:rec2C(rec)
    if self.nodes then
       io.stderr:write('Multiple 2C node blocks; redefining nodes\n')
@@ -127,6 +171,8 @@ function Exo2_writer_class:rec2C(rec)
       self.nodes = true
    end
    self.f:define_nodes(rec)
+   -- attach node sets
+   save_node_sets(self)
 end
 
 do

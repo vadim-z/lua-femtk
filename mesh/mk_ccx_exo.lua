@@ -11,7 +11,7 @@ local M = R.read_msh2(arg[1])
 U.write_mesh_exo2(M, arg[3],
                   { title = 'cnv: ' .. arg[1],
                     ids = { nsets = 100, ssets = 500 },
-                    fp_type = 'float' })
+                    fp_type = 'float', fmt = 2 })
 
 local f = assert(io.open(arg[2], 'w'))
 W.write_ccx_mesh(f, M)

@@ -115,6 +115,20 @@ function Exo2Class:define_nodes(nodes)
    end
 end
 
+local nfaces = {
+   TET = 4,
+   HEX = 6,
+   WED = 5,
+   PYR = 5,
+}
+
+local function type_to_code(eltyp)
+   -- parse element type, get element code
+   local typ, nnodes = string.match(eltyp, '^(%a%a%a)%a*(%d+)$')
+   local code = 10*(nfaces[typ] or 0) + (tonumber(nnodes) or 0)
+   return code
+end
+
 -- define element blocks and related variables
 function Exo2Class:define_els(els, mats)
    assert(not self.NCfile, 'Unexpected elements definition')
@@ -129,13 +143,17 @@ function Exo2Class:define_els(els, mats)
    local blk_elem_maps = {}
    -- ids of the blocks
    local ids = {}
+   local phys_ids = {}
    -- inverse map
    self.inv_elem_map_conseq = {}
    self.inv_elem_map_blk = {}
    self.inv_elem_map_loc = {}
 
    for k, el in ipairs(els) do
-      local id = el.id
+      -- convert input (physical) id to something unique
+      -- because for hybrid meshes diffent elblocks may have the same id
+      -- which is prohibited
+      local id = 100*el.id + type_to_code(el.type)
       blocks[id] = blocks[id] or {}
       local bkey = string.format('%s%d', el.type, #el)
       -- try to find block by its id and type
@@ -162,6 +180,8 @@ function Exo2Class:define_els(els, mats)
          }
          -- add id (property #1)
          ids[bl_num] = id
+         -- raw id, to match with materials
+         phys_ids[bl_num] = el.id
       else
          -- element block already exists. fetch it
          block = conn_blocks[bl_num]
@@ -250,7 +270,7 @@ function Exo2Class:define_els(els, mats)
 
          -- truth table
          local ptbl = {}
-         for kbl, id in ipairs(ids) do
+         for kbl, id in ipairs(phys_ids) do
             ptbl[kbl] = (id == kmat) and 1 or 0
          end
          self.vals_fixed[name] = ptbl

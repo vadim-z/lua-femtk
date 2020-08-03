@@ -26,40 +26,69 @@ local elemtable = {
 }
 
 local function write_els(f, mesh)
-   -- FIXME FIXME: determine order by the 1st element
-   f:write(string.format('*ELEMENT, TYPE=C3D%d, ELSET=Eall\n',
-                         #mesh.elems[1]))
-   for ke, elem in ipairs(mesh.elems) do
-      local elty = assert(elemtable[elem.type],
-                          'Failed to map eltype to CCX: ' .. elem.type)
-      local nodes = mesh.elems[ke]
-      local ln = {}
-      table.insert(ln, string.format('%10u', ke))
-      for kn = 1, #nodes do
-         local ix
-         if not elty.map then
-            ix = kn
-         else
-            -- map node index
-            ix = elty.map[kn]
-         end
-         table.insert(ln, string.format('%10u', nodes[ix]))
-      end
-
-      -- write lines with continuations
-      local ofs, len = 0, 1+#nodes
-      while len > 0 do
-         local linelen = math.min(len, 7)
-         f:write(table.concat(ln, ',', ofs+1, ofs+linelen))
-         len = len - linelen
-         ofs = ofs + linelen
-         if len > 0 then
-            f:write(',\n') -- a continuation line will follow
-         else
-            f:write('\n')
-         end
-      end
+   -- mask to write elements grouping them by their types
+   local elmask = {}
+   for k = 1, #mesh.elems do
+      elmask[k] = true
    end
+
+   repeat
+      -- find the first element not written yet
+      local pos = 1
+      while pos <= #mesh.elems and not elmask[pos] do
+         pos = pos + 1
+      end
+      local found = pos <= #mesh.elems
+      if found then
+         -- element found, write header now
+         -- elements from operators with repeating elset parameter
+         -- are combined into the set
+         f:write(string.format('*ELEMENT, TYPE=C3D%d, ELSET=Eall\n',
+                               #mesh.elems[pos]))
+         local eltype_name = mesh.elems[pos].type
+         local elty = assert(elemtable[eltype_name],
+                             'Failed to map eltype to CCX: ' .. eltype_name)
+         -- process elements of the same type
+         while pos <= #mesh.elems do
+            if elmask[pos] and eltype_name == mesh.elems[pos].type then
+               -- remove element from mask
+               elmask[pos] = false
+
+               local nodes = mesh.elems[pos]
+               local ln = {}
+               table.insert(ln, string.format('%10u', pos))
+               for kn = 1, #nodes do
+                  local ix
+                  if not elty.map then
+                     ix = kn
+                  else
+                     -- map node index
+                     ix = elty.map[kn]
+                  end
+                  table.insert(ln, string.format('%10u', nodes[ix]))
+               end
+
+               -- write lines with continuations
+               local ofs, len = 0, 1+#nodes
+               while len > 0 do
+                  local linelen = math.min(len, 7)
+                  f:write(table.concat(ln, ',', ofs+1, ofs+linelen))
+                  len = len - linelen
+                  ofs = ofs + linelen
+                  if len > 0 then
+                     f:write(',\n') -- a continuation line will follow
+                  else
+                     f:write('\n')
+                  end
+               end
+
+               -- element written
+            end
+            pos = pos + 1
+         end
+      end
+      -- traverse elements again if any
+   until not found
 end
 
 local function write_sets(f, kind, prefix, sets, nitems)
